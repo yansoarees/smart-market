@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "nome": "arroz",
+    "preco": 5
+  },
+  {
+    "id": 2,
+    "nome": "Arroz 5kg",
+    "preco": 5
+  },
+  {
+    "id": 3,
+    "nome": "macarrao",
+    "preco": 1
+  }
+]

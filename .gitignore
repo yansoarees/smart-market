@@ -1,0 +1,10 @@
+# Ignorar pastas pesadas do Node e React
+node_modules/
+**/node_modules/
+
+# Ignorar arquivos de ambiente (senhas)
+.env
+
+# Ignorar arquivos de log
+npm-debug.log
+yarn-error.log
