@@ -1,8 +1,8 @@
-# 🛒 Smart Market - Sistema de mercado de bairro
+#  Smart Market - Sistema de mercado de bairro
 
 Este é um projeto **Full-Stack** desenvolvido para a cadeira de Análise e Projeto de Software. O sistema simula um Mercadinho completo, tratando regras de negócio complexas como produtos por peso, promoções automáticas e divisão de pagamentos.
 
-## 🚀 Como Rodar o Projeto na sua Máquina
+##  Como Rodar o Projeto na sua Máquina
 
 Siga os passos abaixo para configurar o ambiente de desenvolvimento.
 
