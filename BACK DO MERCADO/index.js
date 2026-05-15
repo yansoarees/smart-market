@@ -1,46 +1,42 @@
-// index.js (Raiz do projeto)
+
+require('dotenv').config(); // Puxa as senhas do arquivo .env
 const express = require('express');
 const cors = require('cors');
-const multer = require('multer'); // ★ NOVO: Importando o Multer
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-
-// Puxa a conexão do db
-const db = require('./db'); 
-
-// Importando as Rotas
-const authRoutes = require('./src/routes/authRoutes');
-const produtoRoutes = require('./src/routes/produtoRoutes');
-const pedidoRoutes = require('./src/routes/pedidoRoutes');
+const excelJS = require('exceljs');
 
 const app = express();
 const PORT = 3001;
 
+// Middlewares
 app.use(cors());
 app.use(express.json());
-
-// ★ NOVO: Permite que o Front-end consiga "ver" as imagens salvas
-app.use('/uploads', express.static('uploads'));
-
-// Ligando as rotas ao servidor
-app.use('/', authRoutes);
-app.use('/', produtoRoutes);
-app.use('/', pedidoRoutes);
+app.use('/uploads', express.static('uploads')); // Permite ver as fotos salvas
 
 // ==============================================================
-// ★ CONFIGURAÇÃO DO UPLOAD DE IMAGENS (MULTER) ★
+// 2. IMPORTANDO OS REPOSITÓRIOS E ROTAS (Padrão MVC)
+// ==============================================================
+const ProdutoRepository = require('./src/repositories/ProdutoRepository');
+const PedidoRepository = require('./src/repositories/PedidoRepository');
+const authRoutes = require('./src/routes/authRoutes');
+
+// Ligando a rota de login
+app.use('/', authRoutes);
+
+// ==============================================================
+// 3. CONFIGURAÇÃO DO UPLOAD DE IMAGENS (MULTER)
 // ==============================================================
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = './uploads';
-    // Se a pasta uploads não existir, o Node cria ela na hora!
     if (!fs.existsSync(dir)){
         fs.mkdirSync(dir);
     }
     cb(null, dir);
   },
   filename: function (req, file, cb) {
-    // Dá um nome único pra foto (Ex: produto-164564654.jpg) para não dar conflito
     cb(null, 'produto-' + Date.now() + path.extname(file.originalname));
   }
 });
@@ -48,105 +44,135 @@ const upload = multer({ storage: storage });
 
 
 // ==============================================================
-// ★ ROTA DE SALVAR PRODUTO (AGORA COM FOTO) ★
+// ★ ROTAS DE PRODUTOS (Agora usando o ProdutoRepository) ★
 // ==============================================================
-// Adicionamos o "upload.single('imagem')" na rota
+
+app.get('/relatorio/estoque', async (req, res) => {
+  try {
+    const produtos = await ProdutoRepository.buscarTodos();
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Estoque Smart Market');
+
+    // Cabeçalhos da Tabela
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 8 },
+      { header: 'Produto', key: 'nome', width: 35 },
+      { header: 'Categoria', key: 'categoria', width: 20 },
+      { header: 'Preço (R$)', key: 'preco', width: 15 },
+      { header: 'Estoque Total', key: 'estoque', width: 15 },
+      { header: 'Sabores / Variações', key: 'variacoes', width: 50 },
+    ];
+
+    // Preenchendo as linhas com os produtos
+    produtos.forEach(prod => {
+      let variacoesTexto = '-';
+      if (prod.variacoes && prod.variacoes !== '[]' && prod.variacoes !== 'null') {
+        try {
+          const vars = JSON.parse(prod.variacoes);
+          if (vars.length > 0) {
+            variacoesTexto = vars.map(v => `${v.nome}: ${v.estoque}`).join(' | ');
+          }
+        } catch(e) {}
+      }
+
+      worksheet.addRow({
+        id: prod.id,
+        nome: prod.nome,
+        categoria: prod.categoria,
+        preco: Number(prod.preco).toFixed(2).replace('.', ','),
+        estoque: prod.estoque,
+        variacoes: variacoesTexto
+      });
+    });
+
+    // Estilo básico para o Cabeçalho
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00A650' } };
+
+    // Enviar o ficheiro para download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=Relatorio_Estoque.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.status(200).end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao gerar relatório' });
+  }
+});
+
+app.get('/produtos', async (req, res) => {
+  try {
+    const produtos = await ProdutoRepository.buscarTodos();
+    res.json(produtos);
+  } catch (err) { res.status(500).json({ error: "Erro ao buscar produtos" }); }
+});
+
 app.post('/produtos', upload.single('imagem'), async (req, res) => {
   try {
-    const { nome, categoria, preco, promocao, preco_promocao, qtd_promocao } = req.body;
-    
-    // Se o usuário enviou uma foto, salvamos o caminho dela
     const caminhoImagem = req.file ? `/uploads/${req.file.filename}` : null;
+    const isPromo = (req.body.promocao === 'true' || req.body.promocao === '1');
     
-    const sql = "INSERT INTO produto (nome, categoria, preco, promocao, preco_promocao, qtd_promocao, ativo, imagem) VALUES (?, ?, ?, ?, ?, ?, 1, ?)";
+    const id = await ProdutoRepository.criar({
+      ...req.body,
+      promocao: isPromo ? 1 : 0,
+      imagem: caminhoImagem
+    });
     
-    // Converte os textos para True/False e Números
-    const isPromo = (promocao === 'true' || promocao === '1');
-    const valorPromocional = isPromo && preco_promocao ? parseFloat(preco_promocao) : null;
-    const quantidadePromocional = isPromo && qtd_promocao ? parseInt(qtd_promocao) : 1;
-    
-    const [result] = await db.query(sql, [nome, categoria, preco, isPromo ? 1 : 0, valorPromocional, quantidadePromocional, caminhoImagem]);
-    
-    res.status(201).json({ message: "Produto cadastrado com sucesso!", id: result.insertId });
-    
-  } catch (err) {
-    console.error("Erro ao salvar produto:", err);
-    res.status(500).json({ error: "Erro ao salvar no banco de dados." });
-  }
+    res.status(201).json({ message: "Produto cadastrado!", id });
+  } catch (err) { res.status(500).json({ error: "Erro ao salvar" }); }
 });
 
-// ==============================================================
-// ★ ROTA DE DELETAR PRODUTO ★
-// ==============================================================
 app.delete('/produtos/:id', async (req, res) => {
   try {
-    const idDoProduto = req.params.id;
-    const sql = "DELETE FROM produto WHERE id = ?";
-    await db.query(sql, [idDoProduto]);
-    res.status(200).json({ message: "Produto deletado com sucesso!" });
-  } catch (err) {
-    console.error("Erro ao deletar produto:", err);
-    res.status(500).json({ error: "Erro ao deletar no banco de dados." });
-  }
+    await ProdutoRepository.deletar(req.params.id);
+    res.status(200).json({ message: "Deletado!" });
+  } catch (err) { res.status(500).json({ error: "Erro ao deletar" }); }
 });
 
-// ==============================================================
-// ★ ROTA DE EDITAR PRODUTO (AGORA COM FOTO) ★
-// ==============================================================
 app.put('/produtos/:id', upload.single('imagem'), async (req, res) => {
   try {
-    const idDoProduto = req.params.id;
-    const { nome, categoria, preco, promocao, preco_promocao, qtd_promocao } = req.body;
+    const caminhoImagem = req.file ? `/uploads/${req.file.filename}` : null;
+    const isPromo = (req.body.promocao === 'true' || req.body.promocao === '1');
     
-    const isPromo = (promocao === 'true' || promocao === '1');
-    const valorPromocional = isPromo && preco_promocao ? parseFloat(preco_promocao) : null;
-    const quantidadePromocional = isPromo && qtd_promocao ? parseInt(qtd_promocao) : 1;
-    
-    // Verifica se enviou uma FOTO NOVA
-    if (req.file) {
-      const caminhoImagem = `/uploads/${req.file.filename}`;
-      const sql = "UPDATE produto SET nome = ?, categoria = ?, preco = ?, promocao = ?, preco_promocao = ?, qtd_promocao = ?, imagem = ? WHERE id = ?";
-      await db.query(sql, [nome, categoria, preco, isPromo ? 1 : 0, valorPromocional, quantidadePromocional, caminhoImagem, idDoProduto]);
-    } else {
-      // Se não enviou foto nova, atualiza só os textos
-      const sql = "UPDATE produto SET nome = ?, categoria = ?, preco = ?, promocao = ?, preco_promocao = ?, qtd_promocao = ? WHERE id = ?";
-      await db.query(sql, [nome, categoria, preco, isPromo ? 1 : 0, valorPromocional, quantidadePromocional, idDoProduto]);
-    }
-    
-    res.status(200).json({ message: "Produto atualizado com sucesso!" });
-    
-  } catch (err) {
-    console.error("Erro ao atualizar produto:", err);
-    res.status(500).json({ error: "Erro ao atualizar no banco de dados." });
-  }
+    await ProdutoRepository.atualizar(req.params.id, {
+      ...req.body,
+      promocao: isPromo ? 1 : 0,
+      imagem: caminhoImagem
+    });
+    res.status(200).json({ message: "Atualizado!" });
+  } catch (err) { res.status(500).json({ error: "Erro ao atualizar" }); }
 });
 
-// ★ ROTA PARA BUSCAR OS PEDIDOS ★
+
+// ==============================================================
+// ★ ROTAS DE PEDIDOS (Agora usando o PedidoRepository) ★
+// ==============================================================
 app.get('/pedidos', async (req, res) => {
   try {
-    const sql = "SELECT * FROM pedido ORDER BY id DESC";
-    const [pedidos] = await db.query(sql);
-    res.status(200).json(pedidos);
-  } catch (err) {
-    console.error("Erro ao buscar pedidos:", err);
-    res.status(500).json({ error: "Erro ao buscar pedidos no banco de dados." });
-  }
+    const pedidos = await PedidoRepository.buscarTodos();
+    res.json(pedidos);
+  } catch (err) { res.status(500).json({ error: "Erro ao buscar pedidos" }); }
 });
 
-// ★ ROTA PARA ATUALIZAR O STATUS DO PEDIDO ★
+app.post('/pedidos', async (req, res) => {
+    try {
+      const id = await PedidoRepository.criar(req.body);
+      res.status(201).json({ id });
+    } catch (err) { res.status(500).json({ error: "Erro ao salvar pedido" }); }
+});
+
 app.put('/pedidos/:id/status', async (req, res) => {
   try {
-    const idDoPedido = req.params.id;
-    const { status } = req.body;
-    const sql = "UPDATE pedido SET status = ? WHERE id = ?";
-    await db.query(sql, [status, idDoPedido]);
-    res.status(200).json({ message: "Status atualizado com sucesso!" });
-  } catch (err) {
-    console.error("Erro ao atualizar status do pedido:", err);
-    res.status(500).json({ error: "Erro ao atualizar status no banco." });
-  }
+    await PedidoRepository.atualizarStatus(req.params.id, req.body.status);
+    res.json({ message: "Status atualizado" });
+  } catch (err) { res.status(500).json({ error: "Erro no status" }); }
 });
 
+
+// ==============================================================
+// 4. LIGANDO O SERVIDOR
+// ==============================================================
 app.listen(PORT, () => {
-    console.log(`🚀 Back-end rodando lindamente em http://127.0.0.1:${PORT}`);
+    console.log(`🚀 Back-end rodando lindamente na porta ${PORT}`);
 });

@@ -30,7 +30,6 @@ function Loja() {
   const [modalAberto, setModalAberto] = useState(false);
   const [etapaModal, setEtapaModal] = useState('identificacao'); 
   
-  // ★ NOVO: Estado para controlar o menu de categorias
   const [menuCategoriasAberto, setMenuCategoriasAberto] = useState(false);
 
   const [nomeCliente, setNomeCliente] = useState(''); 
@@ -51,14 +50,6 @@ function Loja() {
   useEffect(() => {
     localStorage.setItem('smartMarketCart', JSON.stringify(carrinho));
   }, [carrinho]);
-
-  function obterSaboresDisponiveis(nomeProduto) {
-    const nome = (nomeProduto || '').toLowerCase();
-    if (nome.includes('tang')) return ['Laranja', 'Uva', 'Morango', 'Limão', 'Maracujá', 'Goiaba', 'Manga'];
-    if (nome.includes('pipo') || nome.includes('pippo')) return ['Tradicional', 'Queijo', 'Cebola', 'Churrasco', 'Bacon', 'Pizza'];
-    if (nome.includes('biscoito') || nome.includes('bolacha') || nome.includes('treloso')) return ['Chocolate', 'Morango', 'Leite', 'Bem Casado', 'Baunilha'];
-    return [];
-  }
 
   function formatarTelefone(valor) {
     if (!valor) return '';
@@ -100,6 +91,10 @@ function Loja() {
 
   function formatarDinheiro(valor) {
     return converterParaNumero(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getQtdNoCarrinho(idProduto) {
+    return carrinho.filter(item => item.id === idProduto).reduce((acc, item) => acc + parseFloat(item.quantidade), 0);
   }
 
   useEffect(() => {
@@ -144,6 +139,11 @@ function Loja() {
             ? `http://127.0.0.1:3001${produto.imagem}` 
             : `/img/${categoriaFormatada}/${nomeFormatado}.png`;
 
+          let variacoesLidas = [];
+          if (produto.variacoes && produto.variacoes !== '[]' && produto.variacoes !== 'null') {
+            try { variacoesLidas = JSON.parse(produto.variacoes); } catch(e) {}
+          }
+
           return { 
             ...produto, 
             foto: linkDaFoto, 
@@ -153,7 +153,9 @@ function Loja() {
             precoPromo: precoPromo,
             qtdPromo: qtdPromo,
             mensagemPromo: mensagemPromo,
-            opcoes: opcoes
+            opcoes: opcoes,
+            estoque: parseInt(produto.estoque) || 0,
+            variacoes: variacoesLidas
           };
         });
         setProdutos(produtosProntos);
@@ -167,18 +169,26 @@ function Loja() {
   }, []);
 
   function handleAdicionarClick(produto) {
+    if (produto.estoque <= 0) return;
+
+    const qtdAtual = getQtdNoCarrinho(produto.id);
+
     const nomeProd = (produto.nome || '').toLowerCase();
     const catProd = (produto.categoria || '').toLowerCase();
-    const temSaboresPreCadastrados = obterSaboresDisponiveis(nomeProd).length > 0;
     const temOpcoes = produto.opcoes && produto.opcoes.length > 0;
+    const temVariacoesDB = produto.variacoes && produto.variacoes.length > 0;
 
-    if (catProd === 'frios' || nomeProd.includes('queijo') || nomeProd.includes('presunto') || temOpcoes || produto.temSabores || temSaboresPreCadastrados) {
+    if (catProd === 'frios' || nomeProd.includes('queijo') || nomeProd.includes('presunto') || temOpcoes || temVariacoesDB) {
       setProdutoConfigurando(produto);
       setConfigPeso(''); 
       setConfigQtd('1'); 
       setConfigSabores({});
       setOpcaoSelecionada(temOpcoes ? produto.opcoes[0] : null);
     } else {
+      if (qtdAtual + 1 > produto.estoque) {
+        alert(`Oops! Temos apenas ${produto.estoque} unidades de ${produto.nome} no estoque.`);
+        return;
+      }
       confirmarAdicaoAoCarrinho(produto, 1, null, produto.isPromo ? produto.precoPromo : produto.precoNormal);
     }
   }
@@ -201,9 +211,26 @@ function Loja() {
     setProdutoConfigurando(null); 
   }
 
+  // ★ NOVA TRAVA BLINDADA NO BOTÃO [+] DA SACOLA ★
   function alterarQuantidadeCart(idUnico, delta) {
     const itemExistente = carrinho.find(item => item.idUnico === idUnico);
     if (!itemExistente) return;
+
+    if (delta > 0) {
+      if (itemExistente.estoqueSaborLimit !== undefined) {
+        if (itemExistente.quantidade + delta > itemExistente.estoqueSaborLimit) {
+          alert(`Limite atingido! Temos apenas ${itemExistente.estoqueSaborLimit} do sabor ${itemExistente.infoAdicional}.`);
+          return;
+        }
+      } else {
+        const qtdTotalDesseProduto = getQtdNoCarrinho(itemExistente.id);
+        if (qtdTotalDesseProduto + delta > itemExistente.estoque) {
+          alert(`Limite de estoque atingido! Temos apenas ${itemExistente.estoque} disponíveis.`);
+          return;
+        }
+      }
+    }
+
     const novaQuantidade = itemExistente.quantidade + delta;
     if (novaQuantidade <= 0) {
       setCarrinho(carrinho.filter(item => item.idUnico !== idUnico));
@@ -392,7 +419,6 @@ function Loja() {
       return grupos;
     }, {});
 
-  // Ordenação das categorias para o menu e para a renderização
   const categoriasOrdenadas = Object.keys(produtosAgrupados).sort((a, b) => {
     if (a === '🔥 Promoções do Dia') return -1;
     if (b === '🔥 Promoções do Dia') return 1;
@@ -411,10 +437,36 @@ function Loja() {
           animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           background-color: #e2e8f0;
         }
-        /* Efeito de hover nos itens do menu dropdown */
         .menu-categoria-item:hover {
           background-color: #f8fafc;
           color: #4f46e5;
+        }
+        .card.esgotado {
+          opacity: 0.6;
+          filter: grayscale(0.7);
+        }
+        .badge-esgotado {
+          position: absolute;
+          top: 40%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-10deg);
+          background: #e74c3c;
+          color: white;
+          font-size: 14px;
+          font-weight: 900;
+          padding: 6px 16px;
+          border-radius: 6px;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          z-index: 10;
+          border: 3px solid white;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .add-btn:disabled {
+          background: #cbd5e1;
+          color: #64748b;
+          cursor: not-allowed;
+          border: none;
         }
       `}</style>
 
@@ -438,7 +490,6 @@ function Loja() {
               <input type="search" placeholder="Buscar produto..." style={{ width: '100%', paddingLeft: '35px' }} value={busca} onChange={(e) => setBusca(e.target.value)} />
             </div>
             
-            {/* ★ O NOVO BOTÃO DE MENU DROPDOWN ★ */}
             <div style={{ position: 'relative' }}>
               <button 
                 onClick={() => setMenuCategoriasAberto(!menuCategoriasAberto)}
@@ -500,7 +551,6 @@ function Loja() {
               <p style={{ textAlign: 'center', padding: '20px', fontWeight: 'bold', color: '#7f8c8d' }}>Nenhum produto encontrado...</p>
             ) : (
               categoriasOrdenadas.map(categoria => (
-                // ★ ID ADICIONADO AQUI PARA PERMITIR O SCROLL ★
                 <div key={categoria} id={`secao-${formatarNome(categoria)}`} style={{ width: '100%', marginBottom: '30px', scrollMarginTop: '100px' }}>
                   <h2 style={{ 
                     background: categoria === '🔥 Promoções do Dia' ? '#fce8e6' : '#d1f2e6', 
@@ -515,17 +565,25 @@ function Loja() {
                     {categoria}
                   </h2>
                   <div className="container">
-                    {produtosAgrupados[categoria].map((prod) => (
-                      <div key={prod.id} className="card">
+                    {produtosAgrupados[categoria].map((prod) => {
+                      const esgotado = prod.estoque <= 0;
+                      
+                      return (
+                      <div key={prod.id} className={`card ${esgotado ? 'esgotado' : ''}`} style={{ position: 'relative' }}>
+                        {prod.isPromo && !esgotado && (
+                          <div style={{ position: 'absolute', top: '-10px', left: '-10px', background: '#ff3b3b', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', zIndex: 5, boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+                            PROMO
+                          </div>
+                        )}
+                        
+                        {esgotado && <div className="badge-esgotado">ESGOTADO</div>}
+
                         <div className="thumb"><img src={prod.foto} alt={prod.nome} onError={(e) => tentarOutraExtensao(e, prod.categoria, prod.nome)} /></div>
                         <h3>{prod.nome}</h3>
                         
                         <div className="price-row" style={{ display: 'block', marginBottom: '10px' }}>
                           {prod.isPromo ? (
                             <>
-                              <div style={{ background: '#ff3b3b', color: 'white', display: 'inline-block', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', marginBottom: '5px' }}>
-                                PROMOÇÃO
-                              </div>
                               <div style={{ fontSize: '14px' }}>
                                 <span style={{ textDecoration: 'line-through', color: '#a0aec0', marginRight: '8px' }}>R$ {formatarDinheiro(prod.precoNormal)}</span>
                                 <span style={{ color: '#00b853', fontWeight: 'bold', fontSize: '16px' }}>R$ {formatarDinheiro(prod.precoPromo)}</span>
@@ -541,9 +599,15 @@ function Loja() {
                           )}
                         </div>
 
-                        <button className="add-btn" onClick={() => handleAdicionarClick(prod)}>Adicionar</button>
+                        <button 
+                          className="add-btn" 
+                          onClick={() => handleAdicionarClick(prod)}
+                          disabled={esgotado}
+                        >
+                          {esgotado ? 'Indisponível' : 'Adicionar'}
+                        </button>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               ))
@@ -551,7 +615,6 @@ function Loja() {
           </div>
         </section>
 
-        {/* MODAL DE CONFIGURAÇÃO DE PRODUTO */}
         {produtoConfigurando && (
           <div className="modal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', zIndex: 10000 }}>
             <div style={{ background: 'white', borderRadius: '12px', width: '90%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
@@ -596,19 +659,34 @@ function Loja() {
                       </>
                     )}
 
-                    {obterSaboresDisponiveis(produtoConfigurando.nome).length > 0 && (
+                    {produtoConfigurando.variacoes && produtoConfigurando.variacoes.length > 0 && (
                       <div style={{ marginBottom: '20px', maxHeight: '180px', overflowY: 'auto' }}>
-                        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px', fontSize: '14px', color: '#333' }}>Quais sabores deseja? (Informe a quantidade de cada)</label>
-                        {obterSaboresDisponiveis(produtoConfigurando.nome).map(sabor => (
-                          <div key={sabor} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '5px' }}>
-                            <span>{sabor}</span>
-                            <input type="number" min="0" placeholder="0" value={configSabores[sabor] || ''} onChange={e => setConfigSabores({...configSabores, [sabor]: e.target.value})} style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px' }} />
+                        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px', fontSize: '14px', color: '#333' }}>Quais sabores deseja?</label>
+                        {produtoConfigurando.variacoes.map(varDB => {
+                          const estoqueSabor = parseInt(varDB.estoque) || 0;
+                          const esgotadoSabor = estoqueSabor <= 0;
+                          
+                          return (
+                          <div key={varDB.nome} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '8px', background: esgotadoSabor ? '#ffebee' : '#f5f5f5', borderRadius: '5px', opacity: esgotadoSabor ? 0.6 : 1 }}>
+                            <span style={{ fontWeight: '500', color: esgotadoSabor ? '#c0392b' : '#333' }}>
+                              {varDB.nome} <span style={{fontSize:'12px', fontWeight:'normal'}}>({estoqueSabor} disp.)</span>
+                            </span>
+                            <input 
+                              type="number" min="0" max={estoqueSabor} disabled={esgotadoSabor} placeholder="0" 
+                              value={configSabores[varDB.nome] || ''} 
+                              onChange={e => {
+                                let val = parseInt(e.target.value) || 0;
+                                if (val > estoqueSabor) val = estoqueSabor;
+                                setConfigSabores({...configSabores, [varDB.nome]: val === 0 ? '' : val})
+                              }} 
+                              style={{ width: '60px', padding: '5px', border: '1px solid #ccc', borderRadius: '3px', background: esgotadoSabor ? '#eee' : 'white' }} 
+                            />
                           </div>
-                        ))}
+                        )})}
                       </div>
                     )}
 
-                    {obterSaboresDisponiveis(produtoConfigurando.nome).length === 0 && (
+                    {!(produtoConfigurando.variacoes && produtoConfigurando.variacoes.length > 0) && (
                       <div style={{ marginBottom: '25px' }}>
                         <p style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px' }}>Quantidade:</p>
                         <input type="number" min="1" value={configQtd} onChange={e => setConfigQtd(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '16px', boxSizing: 'border-box' }} />
@@ -620,34 +698,83 @@ function Loja() {
                 <button 
                   onClick={() => {
                     let info = ''; let tipo = 'padrao'; let valor = configPeso; let quantidadeFinal = parseInt(configQtd) || 1;
-                    
                     let precoParaCarrinho = produtoConfigurando.isPromo ? produtoConfigurando.precoPromo : produtoConfigurando.precoNormal;
 
                     const cat = (produtoConfigurando.categoria || '').toLowerCase();
                     const nome = (produtoConfigurando.nome || '').toLowerCase();
-                    const listaSabores = obterSaboresDisponiveis(nome);
 
                     if (cat === 'frios' || nome.includes('queijo') || nome.includes('presunto')) {
                       const pesoKg = parseFloat(configPeso);
                       if (isNaN(pesoKg) || pesoKg <= 0) return alert("Por favor, digite um peso válido! Ex: 0.250");
+                      tipo = 'peso'; info = `${pesoKg}kg`; quantidadeFinal = pesoKg; 
                       
-                      tipo = 'peso'; 
-                      info = `${pesoKg}kg`; 
-                      quantidadeFinal = pesoKg; 
+                      const qtdAtual = getQtdNoCarrinho(produtoConfigurando.id);
+                      if (qtdAtual + quantidadeFinal > produtoConfigurando.estoque) {
+                        alert(`Oops! Temos apenas ${produtoConfigurando.estoque} unidades no estoque. Você já tem ${qtdAtual} no carrinho.`);
+                        return;
+                      }
+                      confirmarAdicaoAoCarrinho(produtoConfigurando, quantidadeFinal, { tipo, valor, info }, precoParaCarrinho);
+
                     } else if (produtoConfigurando.opcoes && produtoConfigurando.opcoes.length > 0) {
                       tipo = 'opcoes';
                       info = opcaoSelecionada ? opcaoSelecionada.label : '';
                       precoParaCarrinho = opcaoSelecionada ? opcaoSelecionada.preco : produtoConfigurando.preco;
                       quantidadeFinal = parseInt(configQtd) || 1;
-                    } else if (listaSabores.length > 0) {
+                      
+                      const qtdAtual = getQtdNoCarrinho(produtoConfigurando.id);
+                      if (qtdAtual + quantidadeFinal > produtoConfigurando.estoque) {
+                        alert(`Oops! Temos apenas ${produtoConfigurando.estoque} unidades no estoque. Você já tem ${qtdAtual} no carrinho.`);
+                        return;
+                      }
+                      confirmarAdicaoAoCarrinho(produtoConfigurando, quantidadeFinal, { tipo, valor, info }, precoParaCarrinho);
+
+                    } else if (produtoConfigurando.variacoes && produtoConfigurando.variacoes.length > 0) {
+                      
+                      // ★ A MÁGICA ACONTECE AQUI: Separa os sabores na sacola! ★
                       tipo = 'sabores';
                       const selecionados = Object.entries(configSabores).filter(([s, q]) => parseInt(q) > 0);
                       if(selecionados.length === 0) return alert("Escolha pelo menos 1 sabor e informe a quantidade!");
-                      info = selecionados.map(([s, q]) => `${parseInt(q)}x ${s}`).join(', ');
-                      quantidadeFinal = selecionados.reduce((acc, [s, q]) => acc + parseInt(q), 0);
+                      
+                      let novoCarrinho = [...carrinho];
+
+                      for (let [saborNome, qtdStr] of selecionados) {
+                        const qtdSabor = parseInt(qtdStr);
+                        const varDB = produtoConfigurando.variacoes.find(v => v.nome === saborNome);
+                        const maxSabor = varDB ? parseInt(varDB.estoque) : 0;
+
+                        const idUnicoSabor = `${produtoConfigurando.id}-sabor-${saborNome}`;
+                        const itemExistenteIndex = novoCarrinho.findIndex(c => c.idUnico === idUnicoSabor);
+                        const qtdAtualSabor = itemExistenteIndex >= 0 ? novoCarrinho[itemExistenteIndex].quantidade : 0;
+
+                        if (qtdAtualSabor + qtdSabor > maxSabor) {
+                          alert(`Você só pode adicionar mais ${maxSabor - qtdAtualSabor} do sabor ${saborNome}. Temos ${maxSabor} disponíveis.`);
+                          return; 
+                        }
+
+                        if (itemExistenteIndex >= 0) {
+                          novoCarrinho[itemExistenteIndex].quantidade += qtdSabor;
+                        } else {
+                          novoCarrinho.push({
+                            ...produtoConfigurando,
+                            idUnico: idUnicoSabor,
+                            quantidade: qtdSabor,
+                            precoVenda: precoParaCarrinho,
+                            infoAdicional: saborNome,
+                            estoqueSaborLimit: maxSabor // Guarda o limite exclusivo deste sabor!
+                          });
+                        }
+                      }
+                      setCarrinho(novoCarrinho);
+                      setProdutoConfigurando(null);
+                      
+                    } else {
+                      const qtdAtual = getQtdNoCarrinho(produtoConfigurando.id);
+                      if (qtdAtual + quantidadeFinal > produtoConfigurando.estoque) {
+                        alert(`Oops! Temos apenas ${produtoConfigurando.estoque} unidades no estoque. Você já tem ${qtdAtual} no carrinho.`);
+                        return;
+                      }
+                      confirmarAdicaoAoCarrinho(produtoConfigurando, quantidadeFinal, { tipo, valor, info }, precoParaCarrinho);
                     }
-                    
-                    confirmarAdicaoAoCarrinho(produtoConfigurando, quantidadeFinal, { tipo, valor, info }, precoParaCarrinho);
                   }}
                   style={{ width: '100%', padding: '15px', background: '#00b853', color: 'white', border: 'none', borderRadius: '5px', marginTop: '20px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}
                 >
@@ -658,7 +785,6 @@ function Loja() {
           </div>
         )}
 
-        {/* Carrinho Lateral */}
         <aside className={`pedido ${carrinhoAberto ? 'aberto' : ''}`}>
           <button className="close-cart-btn" onClick={() => setCarrinhoAberto(false)}>×</button>
           <div id="pedido-box">
@@ -731,9 +857,6 @@ function Loja() {
         )}
       </main>
 
-      {/* =========================================
-          MODAL DE IDENTIFICAÇÃO E PAGAMENTO 
-      ========================================= */}
       {modalAberto && (
         <div className="modal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', zIndex: 9999 }}>
           
@@ -865,7 +988,6 @@ function Loja() {
   );
 }
 
-// ★ O ROTEADOR QUE CONTROLA AS TELAS ★
 export default function App() {
   return (
     <Routes>
