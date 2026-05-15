@@ -3,8 +3,8 @@ const router = express.Router();
 const produtoController = require('../controllers/produtoController');
 
 router.get('/produtos', produtoController.listarTodos);
-router.post('/produtos/cadastro', produtoController.criar);
-router.delete('/produtos/deletar/:id', produtoController.deletar);
-router.put('/produtos/editar/:id', produtoController.editar);
+router.post('/produtos', produtoController.criar); // Ligado direto no Admin
+router.delete('/produtos/:id', produtoController.deletar); // Ligado direto no Admin
+router.put('/produtos/:id', produtoController.editar); // Ligado direto no Admin
 
 module.exports = router;

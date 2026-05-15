@@ -7,17 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Produto {
-  id        Int     @id @default(autoincrement())
-  nome      String
-  preco     Float
-  categoria String?
-  tipo      String? @default("und")
-  ativo     Int?    @default(1)
-  promocao  Json?
-}
-
-model Pedido {
+model pedido {
   id             Int     @id @default(autoincrement())
   nomeCliente    String
   telefone       String?
@@ -29,10 +19,22 @@ model Pedido {
   status         String? @default("Pendente")
 }
 
-model Usuario {
+model produto {
+  id             Int      @id @default(autoincrement())
+  nome           String
+  preco          Float
+  categoria      String?
+  tipo           String?  @default("und")
+  ativo          Int?     @default(1)
+  promocao       Boolean? @default(false)
+  preco_promocao Decimal? @db.Decimal(10, 2)
+  qtd_promocao   Int?     @default(1)
+}
+
+model usuario {
   id    Int     @id @default(autoincrement())
   nome  String
-  email String  @unique
+  email String  @unique(map: "Usuario_email_key")
   senha String
   papel String? @default("USER")
 }

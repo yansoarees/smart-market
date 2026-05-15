@@ -1,26 +1,41 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import './index.css'; 
+import Login from './Login';
+import Admin from './Admin';
 
-export default function App() {
+function Loja() {
+  const navigate = useNavigate();
   const [produtos, setProdutos] = useState([]);
-  const [carrinho, setCarrinho] = useState([]);
+  
+  const [carrinho, setCarrinho] = useState(() => {
+    try {
+      const carrinhoSalvo = localStorage.getItem('smartMarketCart');
+      return carrinhoSalvo ? JSON.parse(carrinhoSalvo) : [];
+    } catch (error) {
+      return [];
+    }
+  });
+
+  const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   
-  // ★ ESTADOS PARA O MODAL DE CONFIGURAÇÃO DE PRODUTO ★
   const [produtoConfigurando, setProdutoConfigurando] = useState(null);
-  const [opcaoSelecionada, setOpcaoSelecionada] = useState(null); // NOVO: Para Ovos/Copos
-  const [configPeso, setConfigPeso] = useState(''); // Começa vazio pro cliente digitar o KG
+  const [opcaoSelecionada, setOpcaoSelecionada] = useState(null); 
+  const [configPeso, setConfigPeso] = useState(''); 
   const [configSabores, setConfigSabores] = useState({}); 
   const [configQtd, setConfigQtd] = useState('1'); 
 
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [etapaModal, setEtapaModal] = useState('identificacao'); 
+  
+  // ★ NOVO: Estado para controlar o menu de categorias
+  const [menuCategoriasAberto, setMenuCategoriasAberto] = useState(false);
 
   const [nomeCliente, setNomeCliente] = useState(''); 
   const [telefone, setTelefone] = useState('');
   
-  // ★ ESTADOS PARA PAGAMENTO DIVIDIDO ★
   const [modoPagamento, setModoPagamento] = useState('unico'); 
   const [metodoUnico, setMetodoUnico] = useState('Dinheiro');
   const [trocoPara, setTrocoPara] = useState('');
@@ -33,7 +48,10 @@ export default function App() {
 
   const [erroValidacao, setErroValidacao] = useState('');
 
-  // ===== FUNÇÕES DE IDENTIFICAÇÃO DE SABORES =====
+  useEffect(() => {
+    localStorage.setItem('smartMarketCart', JSON.stringify(carrinho));
+  }, [carrinho]);
+
   function obterSaboresDisponiveis(nomeProduto) {
     const nome = (nomeProduto || '').toLowerCase();
     if (nome.includes('tang')) return ['Laranja', 'Uva', 'Morango', 'Limão', 'Maracujá', 'Goiaba', 'Manga'];
@@ -42,7 +60,6 @@ export default function App() {
     return [];
   }
 
-  // ===== FUNÇÕES DE FORMATAÇÃO E VALIDAÇÃO =====
   function formatarTelefone(valor) {
     if (!valor) return '';
     valor = valor.replace(/\D/g, ''); 
@@ -85,7 +102,6 @@ export default function App() {
     return converterParaNumero(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  // ===== CARREGAR PRODUTOS =====
   useEffect(() => {
     async function carregarProdutos() {
       try {
@@ -99,7 +115,6 @@ export default function App() {
           
           let opcoes = null;
           
-          // Opções baseadas nas suas fotos
           if (nomeLower.includes('ovo')) {
             opcoes = [
               { id: 'unidade', label: 'Unidade', preco: 0.70 },
@@ -118,23 +133,20 @@ export default function App() {
             ];
           }
 
-          // ★ NOVO: INJEÇÃO DE PROMOÇÕES ★
-          let isPromo = false;
           let precoNormal = converterParaNumero(produto.preco);
-          let precoPromo = precoNormal;
-          let qtdPromo = 1;
-          let mensagemPromo = '';
+          let isPromo = produto.promocao === 1 || produto.promocao === true;
+          let precoPromo = isPromo ? converterParaNumero(produto.preco_promocao) : precoNormal;
+          let qtdPromo = isPromo && produto.qtd_promocao ? parseInt(produto.qtd_promocao) : 1;
 
-          if (nomeLower.includes('condensado') || nomeLower.includes('triangulo')) {
-            isPromo = true;
-            precoPromo = precoNormal - 0.20; // Simula desconto de 20 centavos
-            qtdPromo = 6;
-            mensagemPromo = `A partir de ${qtdPromo} un → R$ ${formatarDinheiro(precoPromo)} cada`;
-          }
+          let mensagemPromo = isPromo && qtdPromo > 1 ? `A partir de ${qtdPromo} un → R$ ${formatarDinheiro(precoPromo)} cada` : '';
+
+          const linkDaFoto = produto.imagem 
+            ? `http://127.0.0.1:3001${produto.imagem}` 
+            : `/img/${categoriaFormatada}/${nomeFormatado}.png`;
 
           return { 
             ...produto, 
-            foto: `/img/${categoriaFormatada}/${nomeFormatado}.png`, 
+            foto: linkDaFoto, 
             preco: precoNormal,
             isPromo: isPromo,
             precoNormal: precoNormal,
@@ -147,12 +159,13 @@ export default function App() {
         setProdutos(produtosProntos);
       } catch (erro) {
         console.error("Servidor offline", erro);
+      } finally {
+        setLoading(false);
       }
     }
     carregarProdutos();
   }, []);
 
-  // ===== LÓGICA DO CARRINHO E PERSONALIZAÇÃO =====
   function handleAdicionarClick(produto) {
     const nomeProd = (produto.nome || '').toLowerCase();
     const catProd = (produto.categoria || '').toLowerCase();
@@ -166,7 +179,7 @@ export default function App() {
       setConfigSabores({});
       setOpcaoSelecionada(temOpcoes ? produto.opcoes[0] : null);
     } else {
-      confirmarAdicaoAoCarrinho(produto, 1, null, produto.preco);
+      confirmarAdicaoAoCarrinho(produto, 1, null, produto.isPromo ? produto.precoPromo : produto.precoNormal);
     }
   }
 
@@ -174,7 +187,7 @@ export default function App() {
     const idUnico = detalhes ? `${produto.id}-${detalhes.info}` : `${produto.id}-padrao`;
     const itemExistente = carrinho.find(item => item.idUnico === idUnico);
 
-    const novoPreco = precoFinalizado !== undefined ? precoFinalizado : produto.preco;
+    const novoPreco = precoFinalizado !== undefined ? precoFinalizado : (produto.isPromo ? produto.precoPromo : produto.precoNormal);
 
     if (itemExistente) {
       const novaQtd = (produto.categoria || '').toLowerCase() === 'frios' || (produto.nome || '').toLowerCase().includes('queijo') || (produto.nome || '').toLowerCase().includes('presunto')
@@ -199,30 +212,25 @@ export default function App() {
     }
   }
 
-  // ★ FUNÇÃO INTELIGENTE DE CÁLCULO (INCLUI PROMOÇÕES) ★
   function calcularPrecoItem(item) {
     const nomeLower = (item.nome || '').toLowerCase();
     
-    // 1. Regra para Queijos e Frios (Preço do KG * Peso digitado)
-    if ((item.categoria || '').toLowerCase() === 'frios' || nomeLower.includes('queijo') || nomeLower.includes('presunto')) {
-      return item.precoVenda * parseFloat(item.quantidade);
+    if ((item.categoria || '').toLowerCase() === 'frios' || nomeLower.includes('queijo') || nomeLower.includes('presunto') || item.infoAdicional) {
+      const precoUnicoCustom = item.precoNormal || item.preco; 
+      return precoUnicoCustom * parseFloat(item.quantidade);
     }
     
-    // 2. Regra da Promoção Dinâmica
     if (item.isPromo && item.quantidade >= item.qtdPromo) {
       return item.precoPromo * item.quantidade;
     }
     
-    // 3. Regra Padrão (Sem promoção ou quantidade insuficiente)
-    const precoUnitarioAtual = item.precoNormal || item.precoVenda;
-    return precoUnitarioAtual * item.quantidade;
+    return item.precoNormal * item.quantidade;
   }
 
   const subtotal = carrinho.reduce((acc, item) => acc + calcularPrecoItem(item), 0);
   const taxa = tipoEntrega === 'Entrega' ? 5.00 : 0; 
   const total = subtotal + taxa;
   
-  // Variáveis para pagamento múltiplo
   const totalPagoMultiplo = pagamentosMultiplos.reduce((acc, p) => acc + converterParaNumero(p.valor), 0);
   const valorRestante = total - totalPagoMultiplo;
 
@@ -232,7 +240,6 @@ export default function App() {
     setCarrinhoAberto(false);
   }
 
-  // ===== VALIDAÇÕES E MODAIS =====
   function abrirModal() {
     setEtapaModal('identificacao'); 
     setErroValidacao(''); 
@@ -374,17 +381,46 @@ export default function App() {
       return statusAtivo && p.nome.toLowerCase().includes(busca.toLowerCase());
     })
     .reduce((grupos, produto) => {
-      const cat = produto.isPromo ? '🔥PROMOÇÃO' : (produto.categoria || "Outros");
+      const catBanco = (produto.categoria || "Outros").trim();
+      const catLower = catBanco.toLowerCase();
+      
+      const isAbaPromocao = produto.isPromo || catLower === 'promoção' || catLower === 'promocao';
+      const cat = isAbaPromocao ? '🔥 Promoções do Dia' : catBanco;
+      
       if (!grupos[cat]) grupos[cat] = [];
       grupos[cat].push(produto);
       return grupos;
     }, {});
 
+  // Ordenação das categorias para o menu e para a renderização
+  const categoriasOrdenadas = Object.keys(produtosAgrupados).sort((a, b) => {
+    if (a === '🔥 Promoções do Dia') return -1;
+    if (b === '🔥 Promoções do Dia') return 1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div translate="no" className="notranslate">
+      
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .skeleton-box {
+          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          background-color: #e2e8f0;
+        }
+        /* Efeito de hover nos itens do menu dropdown */
+        .menu-categoria-item:hover {
+          background-color: #f8fafc;
+          color: #4f46e5;
+        }
+      `}</style>
+
       <header>
-        <div className="brand">
-          <a href="#"><img src="/img/logo/logo.jpeg" alt="Logo" className="logo" /></a>
+        <div className="brand" onClick={() => navigate('/login')} style={{ cursor: 'pointer' }}>
+          <img src="/img/logo/logo.jpeg" alt="Logo" className="logo" />
           <div>
             <h1>Smart Market</h1>
             <div className="subtitle">Bomboniere • Embalagens • Mercearia</div>
@@ -401,17 +437,81 @@ export default function App() {
               </svg>
               <input type="search" placeholder="Buscar produto..." style={{ width: '100%', paddingLeft: '35px' }} value={busca} onChange={(e) => setBusca(e.target.value)} />
             </div>
-            <button style={{ background: '#2ecc71', color: 'white', border: 'none', padding: '12px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>📋 Acompanhar Meus Pedidos</button>
-            <button style={{ background: '#1a3b5c', color: 'white', padding: '12px', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Categorias</button>
+            
+            {/* ★ O NOVO BOTÃO DE MENU DROPDOWN ★ */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setMenuCategoriasAberto(!menuCategoriasAberto)}
+                style={{ 
+                  background: '#1a3b5c', color: 'white', padding: '12px 16px', border: 'none', 
+                  borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', 
+                  alignItems: 'center', gap: '8px', transition: '0.2s' 
+                }}
+              >
+                Categorias
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ transform: menuCategoriasAberto ? 'rotate(180deg)' : 'none', transition: '0.3s' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {menuCategoriasAberto && (
+                <div style={{ 
+                  position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', 
+                  border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', 
+                  zIndex: 50, minWidth: '220px', padding: '8px 0', maxHeight: '300px', overflowY: 'auto' 
+                }}>
+                  {categoriasOrdenadas.map(cat => (
+                    <div 
+                      key={`menu-${cat}`}
+                      className="menu-categoria-item"
+                      onClick={() => {
+                        setMenuCategoriasAberto(false);
+                        const elemento = document.getElementById(`secao-${formatarNome(cat)}`);
+                        if (elemento) {
+                          elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '500', color: '#334155', fontSize: '14px', transition: 'background 0.2s' }}
+                    >
+                      {cat}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div id="produtos">
-            {Object.keys(produtosAgrupados).length === 0 ? (
+            {loading ? (
+              <div style={{ width: '100%', marginBottom: '30px' }}>
+                <div className="skeleton-box" style={{ height: '40px', width: '250px', borderRadius: '5px', marginBottom: '15px' }}></div>
+                <div className="container">
+                  {[1, 2, 3, 4, 5, 6].map(n => (
+                    <div key={n} className="card" style={{ padding: '15px' }}>
+                      <div className="skeleton-box" style={{ width: '100%', height: '140px', borderRadius: '8px', marginBottom: '15px' }}></div>
+                      <div className="skeleton-box" style={{ height: '20px', width: '80%', borderRadius: '4px', margin: '0 auto 10px auto' }}></div>
+                      <div className="skeleton-box" style={{ height: '18px', width: '40%', borderRadius: '4px', margin: '0 auto 15px auto' }}></div>
+                      <div className="skeleton-box" style={{ height: '35px', width: '100%', borderRadius: '5px' }}></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : Object.keys(produtosAgrupados).length === 0 ? (
               <p style={{ textAlign: 'center', padding: '20px', fontWeight: 'bold', color: '#7f8c8d' }}>Nenhum produto encontrado...</p>
             ) : (
-              Object.keys(produtosAgrupados).map(categoria => (
-                <div key={categoria} style={{ width: '100%', marginBottom: '30px' }}>
-                  <h2 style={{ background: '#d1f2e6', borderLeft: '5px solid #1abc9c', padding: '10px 15px', margin: '0 0 15px 0', color: '#1a3b5c', fontSize: '20px', fontWeight: 'bold', textTransform: 'capitalize' }}>
+              categoriasOrdenadas.map(categoria => (
+                // ★ ID ADICIONADO AQUI PARA PERMITIR O SCROLL ★
+                <div key={categoria} id={`secao-${formatarNome(categoria)}`} style={{ width: '100%', marginBottom: '30px', scrollMarginTop: '100px' }}>
+                  <h2 style={{ 
+                    background: categoria === '🔥 Promoções do Dia' ? '#fce8e6' : '#d1f2e6', 
+                    borderLeft: `5px solid ${categoria === '🔥 Promoções do Dia' ? '#e74c3c' : '#1abc9c'}`, 
+                    padding: '10px 15px', 
+                    margin: '0 0 15px 0', 
+                    color: categoria === '🔥 Promoções do Dia' ? '#c0392b' : '#1a3b5c', 
+                    fontSize: '20px', 
+                    fontWeight: 'bold', 
+                    textTransform: 'capitalize' 
+                  }}>
                     {categoria}
                   </h2>
                   <div className="container">
@@ -420,7 +520,6 @@ export default function App() {
                         <div className="thumb"><img src={prod.foto} alt={prod.nome} onError={(e) => tentarOutraExtensao(e, prod.categoria, prod.nome)} /></div>
                         <h3>{prod.nome}</h3>
                         
-                        {/* ★ NOVO: RENDERIZAÇÃO DA PROMOÇÃO NO CARD ★ */}
                         <div className="price-row" style={{ display: 'block', marginBottom: '10px' }}>
                           {prod.isPromo ? (
                             <>
@@ -431,12 +530,14 @@ export default function App() {
                                 <span style={{ textDecoration: 'line-through', color: '#a0aec0', marginRight: '8px' }}>R$ {formatarDinheiro(prod.precoNormal)}</span>
                                 <span style={{ color: '#00b853', fontWeight: 'bold', fontSize: '16px' }}>R$ {formatarDinheiro(prod.precoPromo)}</span>
                               </div>
-                              <div style={{ color: '#e67e22', fontSize: '12px', marginTop: '4px', fontWeight: '500' }}>
-                                {prod.mensagemPromo}
-                              </div>
+                              {prod.mensagemPromo && (
+                                <div style={{ color: '#e67e22', fontSize: '12px', marginTop: '4px', fontWeight: 'bold' }}>
+                                  {prod.mensagemPromo}
+                                </div>
+                              )}
                             </>
                           ) : (
-                             <div className="price">R$ {formatarDinheiro(prod.preco)} <span style={{ fontSize: '12px', color: '#7f8c8d' }}>{((prod.categoria || '').toLowerCase() === 'frios' || (prod.nome || '').toLowerCase().includes('queijo') || (prod.nome || '').toLowerCase().includes('presunto')) ? '/kg' : ''}</span></div>
+                              <div className="price">R$ {formatarDinheiro(prod.preco)} <span style={{ fontSize: '12px', color: '#7f8c8d' }}>{((prod.categoria || '').toLowerCase() === 'frios' || (prod.nome || '').toLowerCase().includes('queijo') || (prod.nome || '').toLowerCase().includes('presunto')) ? '/kg' : ''}</span></div>
                           )}
                         </div>
 
@@ -450,9 +551,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* =========================================
-            MODAL DE CONFIGURAÇÃO DE PRODUTO 
-        ========================================= */}
+        {/* MODAL DE CONFIGURAÇÃO DE PRODUTO */}
         {produtoConfigurando && (
           <div className="modal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', zIndex: 10000 }}>
             <div style={{ background: 'white', borderRadius: '12px', width: '90%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
@@ -463,7 +562,6 @@ export default function App() {
               <div style={{ padding: '20px', maxHeight: '70vh', overflowY: 'auto' }}>
                 <h3 style={{ marginTop: 0, color: '#1a3b5c', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{produtoConfigurando.nome}</h3>
                 
-                {/* 1. SE FOR FRIOS / QUEIJO / PRESUNTO */}
                 {((produtoConfigurando.categoria || '').toLowerCase() === 'frios' || (produtoConfigurando.nome || '').toLowerCase().includes('queijo') || (produtoConfigurando.nome || '').toLowerCase().includes('presunto')) ? (
                   <div style={{ marginBottom: '25px' }}>
                     <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', fontSize: '14px', color: '#333' }}>
@@ -477,7 +575,6 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    {/* 2. SE TIVER OPÇÕES */}
                     {produtoConfigurando.opcoes && (
                       <>
                         <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px', fontSize: '14px', color: '#333' }}>Escolha uma opção:</label>
@@ -499,7 +596,6 @@ export default function App() {
                       </>
                     )}
 
-                    {/* 3. SE TIVER SABORES */}
                     {obterSaboresDisponiveis(produtoConfigurando.nome).length > 0 && (
                       <div style={{ marginBottom: '20px', maxHeight: '180px', overflowY: 'auto' }}>
                         <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px', fontSize: '14px', color: '#333' }}>Quais sabores deseja? (Informe a quantidade de cada)</label>
@@ -512,7 +608,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 4. INPUT DE QUANTIDADE GERAL */}
                     {obterSaboresDisponiveis(produtoConfigurando.nome).length === 0 && (
                       <div style={{ marginBottom: '25px' }}>
                         <p style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px' }}>Quantidade:</p>
@@ -525,7 +620,8 @@ export default function App() {
                 <button 
                   onClick={() => {
                     let info = ''; let tipo = 'padrao'; let valor = configPeso; let quantidadeFinal = parseInt(configQtd) || 1;
-                    let precoParaCarrinho = produtoConfigurando.preco;
+                    
+                    let precoParaCarrinho = produtoConfigurando.isPromo ? produtoConfigurando.precoPromo : produtoConfigurando.precoNormal;
 
                     const cat = (produtoConfigurando.categoria || '').toLowerCase();
                     const nome = (produtoConfigurando.nome || '').toLowerCase();
@@ -538,7 +634,6 @@ export default function App() {
                       tipo = 'peso'; 
                       info = `${pesoKg}kg`; 
                       quantidadeFinal = pesoKg; 
-                      precoParaCarrinho = produtoConfigurando.preco; 
                     } else if (produtoConfigurando.opcoes && produtoConfigurando.opcoes.length > 0) {
                       tipo = 'opcoes';
                       info = opcaoSelecionada ? opcaoSelecionada.label : '';
@@ -583,7 +678,6 @@ export default function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                       <span style={{ fontWeight: '500' }}>
                         {item.nome} 
-                        {/* ★ NOVO: INJEÇÃO DO TEXTO DO CARRINHO (IGUAL A SUA FOTO) ★ */}
                         <span style={{ display: 'block', fontSize: '12px', color: '#7f8c8d', marginTop: '4px' }}>
                           {item.infoAdicional ? `${item.infoAdicional} • ` : ''}
                           {item.quantidade} {strMedida} × R$ {formatarDinheiro(valorUnitarioAtual)} = <strong style={{color: '#1a3b5c'}}>R$ {formatarDinheiro(precoItemTotal)}</strong>
@@ -643,7 +737,6 @@ export default function App() {
       {modalAberto && (
         <div className="modal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', zIndex: 9999 }}>
           
-          {/* TELA DE IDENTIFICAÇÃO */}
           {etapaModal === 'identificacao' && (
             <div style={{ background: 'white', borderRadius: '12px', width: '90%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
               <div style={{ background: '#0a1930', padding: '30px 20px', textAlign: 'center', position: 'relative' }}>
@@ -666,7 +759,6 @@ export default function App() {
             </div>
           )}
 
-          {/* TELA DE PAGAMENTO */}
           {etapaModal === 'pagamento' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -685,7 +777,6 @@ export default function App() {
 
               {erroValidacao && <div style={{ background: '#fadbd8', color: '#c0392b', padding: '12px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #e74c3c' }}>{erroValidacao}</div>}
 
-              {/* OPÇÕES DE MODO DE PAGAMENTO */}
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', background: '#eee', borderRadius: '6px', padding: '3px' }}>
                   <button onClick={() => setModoPagamento('unico')} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', background: modoPagamento === 'unico' ? 'white' : 'transparent', color: modoPagamento === 'unico' ? '#1a3b5c' : '#777', boxShadow: modoPagamento === 'unico' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none' }}>Pagamento Único</button>
@@ -693,7 +784,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* MODO: ÚNICO */}
               {modoPagamento === 'unico' && (
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', gap: '15px', marginBottom: '10px' }}>
@@ -709,7 +799,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* MODO: DIVIDIDO */}
               {modoPagamento === 'dividido' && (
                 <div style={{ marginBottom: '20px', background: '#f5f7fa', padding: '15px', borderRadius: '8px' }}>
                   {pagamentosMultiplos.map((pag, index) => (
@@ -747,7 +836,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ENTREGA */}
               <div style={{ marginBottom: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Entrega:</div>
                 <div style={{ display: 'flex', gap: '15px', marginBottom: '10px' }}>
@@ -774,5 +862,16 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+// ★ O ROTEADOR QUE CONTROLA AS TELAS ★
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Loja />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/admin" element={<Admin />} />
+    </Routes>
   );
 }
