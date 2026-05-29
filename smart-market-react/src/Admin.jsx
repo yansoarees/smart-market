@@ -89,6 +89,19 @@ export default function Admin() {
   const listaClientes = Object.values(clientesAgrupados).sort((a, b) => b.totalGasto - a.totalGasto);
 
   // ★ FUNÇÕES DE AÇÃO ★
+
+function handleAbrirDetalhesPedido(pedido) {
+    let itensLidos = [];
+    try {
+      itensLidos = typeof pedido.itens === 'string' ? JSON.parse(pedido.itens) : pedido.itens;
+    } catch (e) {
+      console.error("Erro ao ler itens do pedido", e);
+    }
+    
+    // Salva o pedido clicado no state, já com os itens decodificados
+    setPedidoSelecionado({ ...pedido, itensLista: itensLidos });
+  }
+
   function handleAbrirNovo() {
     setProdutoEditando(null);
     setFormProduto({ nome: '', categoria: '', preco: '', promocao: false, preco_promocao: '', qtd_promocao: '1', imagem: null, estoque: '50', variacoes: [] });

@@ -1,8 +1,8 @@
-# 🛒 Smart Market - Sistema de Gestão e Delivery
+#  Smart Market - Sistema de Gestão e Delivery
 
 Um sistema completo (Full-Stack) desenvolvido para automatizar vendas, gestão de estoque e controle de pedidos de um minimercado/bomboniere. A aplicação conta com uma loja virtual (Catálogo e Carrinho de Compras) para os clientes e um Painel Administrativo (Dashboard) seguro para o lojista.
 
-## 🚀 Tecnologias Utilizadas
+##  Tecnologias Utilizadas
 
 **Front-end:**
 * React.js (Vite)
@@ -21,7 +21,7 @@ Um sistema completo (Full-Stack) desenvolvido para automatizar vendas, gestão d
 
 ---
 
-## 🛠️ Como rodar o projeto localmente (Guia de Instalação)
+##  Como rodar o projeto localmente (Guia de Instalação)
 
 Siga este passo a passo para rodar o projeto na sua máquina.
 
@@ -67,7 +67,7 @@ npm run dev
 
 ---
 
-## 🔐 Segurança do Painel Administrativo
+##  Segurança do Painel Administrativo
 O painel administrativo (`/admin`) é protegido. Para testar o sistema localmente, utilize as credenciais que você configurou no seu arquivo `.env`.
 
 ---
