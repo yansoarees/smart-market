@@ -14,7 +14,7 @@ export default function Login() {
     setCarregando(true);
 
     try {
-      const resposta = await fetch('http://127.0.0.1:3001/login', {
+      const resposta = await fetch('https://smart-market-production-fbe0.up.railway.app/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha })

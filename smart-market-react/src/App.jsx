@@ -100,7 +100,7 @@ function Loja() {
   useEffect(() => {
     async function carregarProdutos() {
       try {
-        const resposta = await fetch('http://127.0.0.1:3001/produtos');
+        const resposta = await fetch('https://smart-market-production-fbe0.up.railway.app/produtos');
         const dados = await resposta.json();
         
         const produtosProntos = dados.map(produto => {
@@ -136,7 +136,7 @@ function Loja() {
           let mensagemPromo = isPromo && qtdPromo > 1 ? `A partir de ${qtdPromo} un → R$ ${formatarDinheiro(precoPromo)} cada` : '';
 
           const linkDaFoto = produto.imagem 
-            ? `http://127.0.0.1:3001${produto.imagem}` 
+            ? `https://smart-market-production-fbe0.up.railway.app${produto.imagem}` 
             : `/img/${categoriaFormatada}/${nomeFormatado}.png`;
 
           let variacoesLidas = [];
@@ -350,7 +350,7 @@ function Loja() {
     };
 
     try {
-      await fetch('http://127.0.0.1:3001/pedidos', {
+      await fetch('https://smart-market-production-fbe0.up.railway.app/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosPedido)

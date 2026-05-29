@@ -32,11 +32,11 @@ export default function Admin() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const resProdutos = await fetch('http://127.0.0.1:3001/produtos');
+        const resProdutos = await fetch('https://smart-market-production-fbe0.up.railway.app/produtos');
         const dadosProdutos = await resProdutos.json();
         setProdutos(dadosProdutos);
 
-        const resPedidos = await fetch('http://127.0.0.1:3001/pedidos');
+        const resPedidos = await fetch('https://smart-market-production-fbe0.up.railway.app/pedidos');
         const dadosPedidos = await resPedidos.json();
         setPedidos(dadosPedidos);
       } catch (erro) { console.error("Erro ao puxar dados:", erro); } finally { setLoading(false); }
@@ -136,7 +136,7 @@ function handleAbrirDetalhesPedido(pedido) {
       const textoOriginal = btn.innerHTML;
       btn.innerHTML = "⏳ Gerando...";
       
-      const resposta = await fetch('http://127.0.0.1:3001/relatorio/estoque');
+      const resposta = await fetch('https://smart-market-production-fbe0.up.railway.app/relatorio/estoque');
       if (!resposta.ok) throw new Error('Erro ao baixar');
       
       const blob = await resposta.blob();
@@ -163,9 +163,9 @@ function handleAbrirDetalhesPedido(pedido) {
     if (btnSalvar) btnSalvar.textContent = "Enviando...";
 
     try {
-      let url = 'http://127.0.0.1:3001/produtos';
+      let url = 'https://smart-market-production-fbe0.up.railway.app/produtos';
       let metodo = 'POST';
-      if (produtoEditando) { url = `http://127.0.0.1:3001/produtos/${produtoEditando}`; metodo = 'PUT'; }
+      if (produtoEditando) { url = `https://smart-market-production-fbe0.up.railway.app/produtos/${produtoEditando}`; metodo = 'PUT'; }
 
       let estoqueCalculado = formProduto.estoque;
       if (formProduto.variacoes && formProduto.variacoes.length > 0) {
@@ -189,7 +189,7 @@ function handleAbrirDetalhesPedido(pedido) {
       const resposta = await fetch(url, { method: metodo, body: formData });
 
       if (resposta.ok) {
-        const novaResposta = await fetch('http://127.0.0.1:3001/produtos');
+        const novaResposta = await fetch('https://smart-market-production-fbe0.up.railway.app/produtos');
         const novosDados = await novaResposta.json();
         setProdutos(novosDados);
         setModalAberto(false);
@@ -204,7 +204,7 @@ function handleAbrirDetalhesPedido(pedido) {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este produto?");
     if (confirmacao) {
       try {
-        const resposta = await fetch(`http://127.0.0.1:3001/produtos/${id}`, { method: 'DELETE' });
+        const resposta = await fetch(`https://smart-market-production-fbe0.up.railway.app/produtos/${id}`, { method: 'DELETE' });
         if (resposta.ok) setProdutos(produtosAtuais => produtosAtuais.filter(prod => prod.id !== id));
       } catch (erro) { console.error("Erro:", erro); alert("Erro de conexão."); }
     }
@@ -212,7 +212,7 @@ function handleAbrirDetalhesPedido(pedido) {
 
   async function handleAtualizarStatusPedido(pedido, novoStatus) {
     try {
-      const resposta = await fetch(`http://127.0.0.1:3001/pedidos/${pedido.id}/status`, {
+      const resposta = await fetch(`https://smart-market-production-fbe0.up.railway.app/pedidos/${pedido.id}/status`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: novoStatus })
       });
       if (resposta.ok) {
@@ -448,7 +448,7 @@ function handleAbrirDetalhesPedido(pedido) {
                       {produtos.map(prod => {
                         const emPromocao = prod.promocao === 1 || prod.promocao === true;
                         const catFormatada = formatarNome(prod.categoria); const nomeFormatado = formatarNome(prod.nome);
-                        const urlDaImagem = prod.imagem ? `http://127.0.0.1:3001${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`;
+                        const urlDaImagem = prod.imagem ? `https://smart-market-production-fbe0.up.railway.app${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`;
                         return (
                           <tr key={prod.id}>
                             <td>
