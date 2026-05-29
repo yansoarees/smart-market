@@ -180,6 +180,7 @@ app.put('/pedidos/:id/status', async (req, res) => {
 // ==============================================================
 // 4. LIGANDO O SERVIDOR
 // ==============================================================
-app.listen(PORT, () => {
+
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Back-end rodando lindamente na porta ${PORT}`);
 });
