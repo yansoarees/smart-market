@@ -22,6 +22,10 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Permite ver as fotos salvas
 
+app.get('/', (req, res) => {
+    res.status(200).json({ mensagem: "A API ESTÁ VIVA! O problema é realmente a conexão com o banco." });
+});
+
 // Rota de Login Administrativo
 app.post('/login', (req, res) => {
     const { email, senha } = req.body;
