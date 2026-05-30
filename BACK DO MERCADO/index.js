@@ -22,6 +22,18 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Permite ver as fotos salvas
 
+// Rota de Login Administrativo
+app.post('/login', (req, res) => {
+    const { email, senha } = req.body;
+
+    // Compara o que veio do site com as senhas secretas salvas no Railway
+    if (email === process.env.ADMIN_EMAIL && senha === process.env.ADMIN_SENHA) {
+        return res.status(200).json({ message: "Acesso liberado!" });
+    } else {
+        return res.status(401).json({ error: "E-mail ou senha incorretos." });
+    }
+});
+
 // ==============================================================
 // 2. IMPORTANDO OS REPOSITÓRIOS E ROTAS (Padrão MVC)
 // ==============================================================
@@ -151,17 +163,6 @@ app.put('/produtos/:id', upload.single('imagem'), async (req, res) => {
   } catch (err) { res.status(500).json({ error: "Erro ao atualizar" }); }
 });
 
-// Rota de Login Administrativo
-app.post('/login', (req, res) => {
-    const { email, senha } = req.body;
-
-    // Compara o que veio do site com as senhas secretas salvas no Railway
-    if (email === process.env.ADMIN_EMAIL && senha === process.env.ADMIN_SENHA) {
-        return res.status(200).json({ message: "Acesso liberado!" });
-    } else {
-        return res.status(401).json({ error: "E-mail ou senha incorretos." });
-    }
-});
 
 // ==============================================================
 // ★ ROTAS DE PEDIDOS (Agora usando o PedidoRepository) ★
