@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "postinstall": "prisma generate"
+    "postinstall": "npx prisma generate && npx prisma db push"
   },
   "keywords": [],
   "author": "",
