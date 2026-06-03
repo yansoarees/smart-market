@@ -129,7 +129,7 @@ app.get('/produtos', async (req, res) => {
     const produtos = await ProdutoRepository.buscarTodos();
     res.json(produtos);
   } catch (err) {
-    console.error("🚨 ERRO REAL DO PRISMA:", error); 
+    console.error("🚨 ERRO REAL DO PRISMA:", err); 
     res.status(500).json({ error: "Erro ao buscar produtos" }); }
 });
 
