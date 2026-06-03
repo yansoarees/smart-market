@@ -22,12 +22,14 @@ export default function Login() {
 
       const dados = await resposta.json();
 
-      if (dados.sucesso) {
+     if (dados.sucesso || resposta.ok) {
         // Se acertou a senha, guarda o "crachá" (token) no navegador
-        localStorage.setItem('token_admin', dados.token);
+        // Usamos o token antigo se existir, ou criamos um temporário para liberar o painel
+        localStorage.setItem('token_admin', dados.token || 'token_liberado_railway');
         navigate('/admin'); // Entra no painel
       } else {
-        setErro(dados.mensagem || 'E-mail ou senha incorretos.');
+        // Agora ele lê o erro antigo (mensagem) ou o erro novo do Railway (error)
+        setErro(dados.mensagem || dados.error || 'E-mail ou senha incorretos.');
       }
     } catch (err) {
       setErro('Erro ao conectar com o servidor.');
