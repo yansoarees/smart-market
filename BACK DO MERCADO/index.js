@@ -128,7 +128,9 @@ app.get('/produtos', async (req, res) => {
   try {
     const produtos = await ProdutoRepository.buscarTodos();
     res.json(produtos);
-  } catch (err) { res.status(500).json({ error: "Erro ao buscar produtos" }); }
+  } catch (err) {
+    console.error("🚨 ERRO REAL DO PRISMA:", error); 
+    res.status(500).json({ error: "Erro ao buscar produtos" }); }
 });
 
 app.post('/produtos', upload.single('imagem'), async (req, res) => {
