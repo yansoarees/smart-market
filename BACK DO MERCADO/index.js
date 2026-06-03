@@ -35,7 +35,7 @@ app.post('/login', (req, res) => {
     console.log("Guardado no Railway -> Email:", process.env.ADMIN_EMAIL, "| Senha:", process.env.ADMIN_SENHA);
 
     // Compara o que veio do site com as senhas secretas salvas no Railway
-    if (email === process.env.ADMIN_EMAIL && senha === process.env.ADMIN_SENHA) {
+   if (String(email).trim() === String(process.env.ADMIN_EMAIL).trim() && String(senha).trim() === String(process.env.ADMIN_SENHA).trim()) {
         return res.status(200).json({ message: "Acesso liberado!" });
     } else {
         return res.status(401).json({ error: "E-mail ou senha incorretos." });
