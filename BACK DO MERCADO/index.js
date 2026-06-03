@@ -30,6 +30,10 @@ app.get('/', (req, res) => {
 app.post('/login', (req, res) => {
     const { email, senha } = req.body;
 
+    console.log("--- TESTE DE LOGIN ---");
+    console.log("Recebido do Vercel -> Email:", email, "| Senha:", senha);
+    console.log("Guardado no Railway -> Email:", process.env.ADMIN_EMAIL, "| Senha:", process.env.ADMIN_SENHA);
+
     // Compara o que veio do site com as senhas secretas salvas no Railway
     if (email === process.env.ADMIN_EMAIL && senha === process.env.ADMIN_SENHA) {
         return res.status(200).json({ message: "Acesso liberado!" });
