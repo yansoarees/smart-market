@@ -140,6 +140,11 @@ app.get('/produtos', async (req, res) => {
 app.post('/produtos', upload.single('imagem'), async (req, res) => {
   try {
     const caminhoImagem = req.body.imagem ? req.body.imagem : (req.file ? `/uploads/${req.file.filename}` : null);
+    
+    console.log("=== DETETIVE DO MERCADO ===");
+    console.log("O que chegou no body:", req.body);
+    console.log("Link da imagem final que vai pro banco:", caminhoImagem);
+
     const isPromo = (req.body.promocao === 'true' || req.body.promocao === '1');
     
     const id = await ProdutoRepository.criar({
@@ -148,8 +153,11 @@ app.post('/produtos', upload.single('imagem'), async (req, res) => {
       imagem: caminhoImagem
     });
     
-    res.status(201).json({ message: "Produto cadastrado!", id });
-  } catch (err) { res.status(500).json({ error: "Erro ao salvar" }); }
+    res.status(201).json({ id }); // se seu backend responder diferente aqui, mantenha a resposta original
+  } catch (err) {
+    console.error("🚨 ERRO REAL DO PRISMA:", err);
+    res.status(500).json({ error: "Erro ao criar produto" });
+  }
 });
 
 app.delete('/produtos/:id', async (req, res) => {
