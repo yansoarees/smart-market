@@ -139,7 +139,7 @@ app.get('/produtos', async (req, res) => {
 
 app.post('/produtos', upload.single('imagem'), async (req, res) => {
   try {
-    const caminhoImagem = req.file ? `/uploads/${req.file.filename}` : null;
+    const caminhoImagem = req.body.imagem ? req.body.imagem : (req.file ? `/uploads/${req.file.filename}` : null);
     const isPromo = (req.body.promocao === 'true' || req.body.promocao === '1');
     
     const id = await ProdutoRepository.criar({
