@@ -18,7 +18,6 @@ export default function Admin() {
   const [produtos, setProdutos] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [imagemBase64, setImagemBase64] = useState("");
 
   const [modalAberto, setModalAberto] = useState(false);
   const [produtoEditando, setProdutoEditando] = useState(null);
@@ -26,19 +25,6 @@ export default function Admin() {
   const [formProduto, setFormProduto] = useState({
     nome: '', categoria: '', preco: '', promocao: false, preco_promocao: '', qtd_promocao: '1', imagem: null, estoque: '50', variacoes: []
   });
-
-  const converterParaBase64 = (arquivo) => {
-    if (arquivo) {
-      const leitor = new FileReader();
-      leitor.readAsDataURL(arquivo);
-      leitor.onload = () => {
-        setImagemBase64(leitor.result); // Guarda o texto da foto pronta
-      };
-      leitor.onerror = (erro) => {
-        console.log("Erro ao converter imagem: ", erro);
-      };
-    }
-  };
 
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
 
@@ -57,6 +43,24 @@ export default function Admin() {
     }
     carregarDados();
   }, []);
+
+  // ★ INTEGRAÇÃO MÁGICA COM IMGBB ★
+  async function uploadParaImgBB(arquivo) {
+    const formData = new FormData();
+    formData.append('image', arquivo);
+    // SUA CHAVE DA API AQUI
+    const apiKey = 'f6731151c6f72e4bc18b9ccfed8f032a'; 
+    const url = `https://api.imgbb.com/1/upload?key=${apiKey}`;
+
+    try {
+      const resposta = await fetch(url, { method: 'POST', body: formData });
+      const dados = await resposta.json();
+      return dados.data.url; // Retorna o link purinho da imagem na nuvem!
+    } catch (erro) {
+      console.error("Erro ao subir imagem pro ImgBB:", erro);
+      return null;
+    }
+  }
 
   // ★ MÉTRICAS DO DASHBOARD ★
   const faturamentoTotal = pedidos.filter(p => p.status !== 'Cancelado').reduce((acc, pedido) => acc + Number(pedido.total), 0);
@@ -112,14 +116,12 @@ export default function Admin() {
       console.error("Erro ao ler itens do pedido", e);
     }
     
-    // Salva o pedido clicado no state, já com os itens decodificados
     setPedidoSelecionado({ ...pedido, itensLista: itensLidos });
   }
 
   function handleAbrirNovo() {
     setProdutoEditando(null);
     setFormProduto({ nome: '', categoria: '', preco: '', promocao: false, preco_promocao: '', qtd_promocao: '1', imagem: null, estoque: '50', variacoes: [] });
-    setImagemBase64(""); // Limpa a imagem antiga
     setModalAberto(true);
   }
 
@@ -141,11 +143,9 @@ export default function Admin() {
       variacoes: variacoesLidas,
       imagem: null
     });
-    setImagemBase64(""); // Limpa a imagem antiga ao editar
     setModalAberto(true);
   }
 
-  // ★ FUNÇÃO: EXPORTAR EXCEL ★
   async function handleBaixarRelatorio() {
     try {
       const btn = document.getElementById('btn-excel');
@@ -174,14 +174,30 @@ export default function Admin() {
 
   async function handleSalvarProduto(e) {
     e.preventDefault(); 
+
+    // ★ TRAVA DE SEGURANÇA: IMPEDE SALVAR PRODUTO VAZIO ★
+    if (!formProduto.nome || !formProduto.categoria || !formProduto.preco) {
+      alert("⚠️ Atenção: Preencha o Nome, a Categoria e o Preço Base antes de salvar!");
+      return; 
+    }
+
     const btnSalvar = document.querySelector('.btn-salvar');
     const textoOriginal = btnSalvar ? btnSalvar.textContent : "Salvar Produto";
-    if (btnSalvar) btnSalvar.textContent = "Enviando...";
-
+    
     try {
       let url = 'https://smart-market-production-fbe0.up.railway.app/produtos';
       let metodo = 'POST';
       if (produtoEditando) { url = `https://smart-market-production-fbe0.up.railway.app/produtos/${produtoEditando}`; metodo = 'PUT'; }
+
+      // ★ LÓGICA DO IMGBB ★
+      let linkImagemFinal = null;
+      // Verifica se existe um arquivo físico novo para fazer upload
+      if (formProduto.imagem && typeof formProduto.imagem !== 'string') {
+        if (btnSalvar) btnSalvar.textContent = "Subindo Foto...";
+        linkImagemFinal = await uploadParaImgBB(formProduto.imagem);
+      }
+
+      if (btnSalvar) btnSalvar.textContent = "Salvando Banco...";
 
       let estoqueCalculado = formProduto.estoque;
       if (formProduto.variacoes && formProduto.variacoes.length > 0) {
@@ -201,9 +217,9 @@ export default function Admin() {
         formData.append('qtd_promocao', formProduto.qtd_promocao);
       }
       
-      // Aqui usamos a imagem em texto Base64
-      if (imagemBase64) { 
-        formData.append('imagem', imagemBase64); 
+      // Envia o LINK gerado pelo ImgBB para o banco
+      if (linkImagemFinal) { 
+        formData.append('imagem', linkImagemFinal); 
       }
 
       const resposta = await fetch(url, { method: metodo, body: formData });
@@ -214,7 +230,6 @@ export default function Admin() {
         setProdutos(novosDados);
         setModalAberto(false);
         setProdutoEditando(null);
-        setImagemBase64(""); // Reseta a imagem após salvar
         setFormProduto({ nome: '', categoria: '', preco: '', promocao: false, preco_promocao: '', qtd_promocao: '1', imagem: null, estoque: '50', variacoes: [] });
       } else { alert("Ops! O servidor negou o salvamento."); }
     } catch (erro) { console.error("Erro na requisição:", erro); alert("Erro de conexão."); } 
@@ -269,7 +284,7 @@ export default function Admin() {
   const IconUsers = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 20, height: 20}}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>;
   const IconEdit = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 16, height: 16}}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>;
   const IconTrash = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 16, height: 16}}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>;
-  const IconEye = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 16, height: 16}}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 4.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+  const IconEye = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 16, height: 16}}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
   const IconPlus = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{width: 18, height: 18}}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>;
   const IconTrendingUp = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{width: 16, height: 16}}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>;
   const IconImage = () => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{width: 18, height: 18}}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>;
@@ -469,8 +484,11 @@ export default function Admin() {
                       {produtos.map(prod => {
                         const emPromocao = prod.promocao === 1 || prod.promocao === true;
                         const catFormatada = formatarNome(prod.categoria); const nomeFormatado = formatarNome(prod.nome);
-                        // A imagem do banco agora é um texto base64, então pode ir direto pro src
-                        const urlDaImagem = prod.imagem && prod.imagem.startsWith('data:') ? prod.imagem : (prod.imagem ? `https://smart-market-production-fbe0.up.railway.app${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`);
+                        
+                        // Mágica para aceitar links da internet ou fotos do sistema antigo
+                        const urlDaImagem = prod.imagem && prod.imagem.startsWith('http') 
+                          ? prod.imagem 
+                          : (prod.imagem ? `https://smart-market-production-fbe0.up.railway.app${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`);
                         
                         return (
                           <tr key={prod.id}>
@@ -596,13 +614,11 @@ export default function Admin() {
                         accept="image/*" 
                         className="file-upload-input" 
                         onChange={(e) => {
-                          const arquivoSelecionado = e.target.files[0];
-                          setFormProduto({...formProduto, imagem: arquivoSelecionado});
-                          converterParaBase64(arquivoSelecionado); // Chama a função que tritura a imagem!
+                          setFormProduto({...formProduto, imagem: e.target.files[0]});
                         }} 
                       />
                       <div style={{ color: '#4f46e5', marginBottom: '4px' }}><IconImage /></div>
-                      <div className="file-upload-text">{formProduto.imagem ? formProduto.imagem.name : 'Selecione uma imagem do seu PC'}</div>
+                      <div className="file-upload-text">{formProduto.imagem && typeof formProduto.imagem !== 'string' ? formProduto.imagem.name : 'Selecione uma imagem do seu PC'}</div>
                     </div>
                   </div>
 
