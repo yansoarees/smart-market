@@ -14,8 +14,7 @@ export default function Login() {
     setCarregando(true);
 
     try {
-      const resposta = await fetch('https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com)', {
-        method: 'POST',
+      const resposta = await fetch('https://smart-market-87p5.onrender.com/login', {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha })
       });
