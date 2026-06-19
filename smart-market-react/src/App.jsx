@@ -100,7 +100,7 @@ function Loja() {
   useEffect(() => {
     async function carregarProdutos() {
       try {
-        const resposta = await fetch('https://smart-market-production-fbe0.up.railway.app/produtos');
+        const resposta = await fetch('https://smart-market-87p5.onrender.com/produtos');
         const dados = await resposta.json();
         
         const produtosProntos = dados.map(produto => {
@@ -136,7 +136,7 @@ function Loja() {
           let mensagemPromo = isPromo && qtdPromo > 1 ? `A partir de ${qtdPromo} un → R$ ${formatarDinheiro(precoPromo)} cada` : '';
 
           const linkDaFoto = produto.imagem 
-            ? `https://smart-market-production-fbe0.up.railway.app${produto.imagem}` 
+            ? `https://smart-market-87p5.onrender.com${produto.imagem}` 
             : `/img/${categoriaFormatada}/${nomeFormatado}.png`;
 
           let variacoesLidas = [];
@@ -350,7 +350,7 @@ function Loja() {
     };
 
     try {
-      await fetch('https://smart-market-production-fbe0.up.railway.app/pedidos', {
+      await fetch('https://smart-market-87p5.onrender.com/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosPedido)
