@@ -100,7 +100,7 @@ function Loja() {
   useEffect(() => {
     async function carregarProdutos() {
       try {
-        const resposta = await fetch('https://smart-market-87p5.onrender.com/produtos');
+        const resposta = await fetch('http://localhost:8080/produtos');
         const dados = await resposta.json();
         
         const produtosProntos = dados.map(produto => {
@@ -136,7 +136,7 @@ function Loja() {
           let mensagemPromo = isPromo && qtdPromo > 1 ? `A partir de ${qtdPromo} un → R$ ${formatarDinheiro(precoPromo)} cada` : '';
 
           const linkDaFoto = produto.imagem 
-            ? `https://smart-market-87p5.onrender.com${produto.imagem}` 
+            ? `http://localhost:8080${produto.imagem}` 
             : `/img/${categoriaFormatada}/${nomeFormatado}.png`;
 
           let variacoesLidas = [];
@@ -350,7 +350,7 @@ function Loja() {
     };
 
     try {
-      await fetch('https://smart-market-87p5.onrender.com/pedidos', {
+      await fetch('http://localhost:8080/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosPedido)
@@ -405,7 +405,8 @@ function Loja() {
   const produtosAgrupados = produtos
     .filter(p => {
       const statusAtivo = p.ativo === 1 || p.ativo === true || p.ativo === undefined;
-      return statusAtivo && p.nome.toLowerCase().includes(busca.toLowerCase());
+      return statusAtivo && p.estoque > 0 && p.nome.toLowerCase().includes(busca.toLowerCase());
+      
     })
     .reduce((grupos, produto) => {
       const catBanco = (produto.categoria || "Outros").trim();
@@ -566,45 +567,37 @@ function Loja() {
                   </h2>
                   <div className="container">
                     {produtosAgrupados[categoria].map((prod) => {
-                      const esgotado = prod.estoque <= 0;
-                      
                       return (
-                      <div key={prod.id} className={`card ${esgotado ? 'esgotado' : ''}`} style={{ position: 'relative' }}>
-                        {prod.isPromo && !esgotado && (
-                          <div style={{ position: 'absolute', top: '-10px', left: '-10px', background: '#ff3b3b', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', zIndex: 5, boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
-                            PROMO
-                          </div>
-                        )}
+                      <div key={prod.id} className="card" style={{ position: 'relative' }}>
                         
-                        {esgotado && <div className="badge-esgotado">ESGOTADO</div>}
-
-                        <div className="thumb"><img src={prod.foto} alt={prod.nome} onError={(e) => tentarOutraExtensao(e, prod.categoria, prod.nome)} /></div>
+                        <div className="thumb">
+                          <img 
+                            src={prod.imagem || prod.foto} 
+                            alt={prod.nome} 
+                            onError={(e) => tentarOutraExtensao(e, prod.categoria, prod.nome)} 
+                          />
+                        </div>
                         <h3>{prod.nome}</h3>
                         
                         <div className="price-row" style={{ display: 'block', marginBottom: '10px' }}>
-                          {prod.isPromo ? (
-                            <>
-                              <div style={{ fontSize: '14px' }}>
-                                <span style={{ textDecoration: 'line-through', color: '#a0aec0', marginRight: '8px' }}>R$ {formatarDinheiro(prod.precoNormal)}</span>
-                                <span style={{ color: '#00b853', fontWeight: 'bold', fontSize: '16px' }}>R$ {formatarDinheiro(prod.precoPromo)}</span>
-                              </div>
-                              {prod.mensagemPromo && (
-                                <div style={{ color: '#e67e22', fontSize: '12px', marginTop: '4px', fontWeight: 'bold' }}>
-                                  {prod.mensagemPromo}
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                              <div className="price">R$ {formatarDinheiro(prod.preco)} <span style={{ fontSize: '12px', color: '#7f8c8d' }}>{((prod.categoria || '').toLowerCase() === 'frios' || (prod.nome || '').toLowerCase().includes('queijo') || (prod.nome || '').toLowerCase().includes('presunto')) ? '/kg' : ''}</span></div>
+                          {/* Preço Base sempre em destaque */}
+                          <div className="price" style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a3b5c' }}>
+                            R$ {formatarDinheiro(prod.precoNormal)} 
+                            <span style={{ fontSize: '12px', color: '#7f8c8d' }}>
+                              {((prod.categoria || '').toLowerCase() === 'frios' || (prod.nome || '').toLowerCase().includes('queijo') || (prod.nome || '').toLowerCase().includes('presunto')) ? '/kg' : ''}
+                            </span>
+                          </div>
+                          
+                          {/* Etiqueta de Atacado / Promoção abaixo do preço */}
+                          {prod.isPromo && prod.mensagemPromo && (
+                            <div style={{ background: '#fff3cd', color: '#856404', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', marginTop: '6px', fontWeight: 'bold', border: '1px solid #ffeeba', display: 'inline-block' }}>
+                              🔥 {prod.mensagemPromo}
+                            </div>
                           )}
                         </div>
 
-                        <button 
-                          className="add-btn" 
-                          onClick={() => handleAdicionarClick(prod)}
-                          disabled={esgotado}
-                        >
-                          {esgotado ? 'Indisponível' : 'Adicionar'}
+                        <button className="add-btn" onClick={() => handleAdicionarClick(prod)}>
+                          Adicionar
                         </button>
                       </div>
                     )})}

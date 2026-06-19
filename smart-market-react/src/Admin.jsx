@@ -32,11 +32,11 @@ export default function Admin() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const resProdutos = await fetch('https://smart-market-87p5.onrender.com/produtos');
+        const resProdutos = await fetch('http://localhost:8080/produtos');
         const dadosProdutos = await resProdutos.json();
         setProdutos(dadosProdutos);
 
-        const resPedidos = await fetch('https://smart-market-87p5.onrender.com/pedidos');
+        const resPedidos = await fetch('http://localhost:8080/pedidos');
         const dadosPedidos = await resPedidos.json();
         setPedidos(dadosPedidos);
       } catch (erro) { console.error("Erro ao puxar dados:", erro); } finally { setLoading(false); }
@@ -152,7 +152,7 @@ export default function Admin() {
       const textoOriginal = btn.innerHTML;
       btn.innerHTML = "⏳ Gerando...";
       
-      const resposta = await fetch('https://smart-market-87p5.onrender.com/relatorio/estoque');
+      const resposta = await fetch('http://localhost:8080/relatorio/estoque');
       if (!resposta.ok) throw new Error('Erro ao baixar');
       
       const blob = await resposta.blob();
@@ -185,9 +185,9 @@ export default function Admin() {
     const textoOriginal = btnSalvar ? btnSalvar.textContent : "Salvar Produto";
     
     try {
-      let url = 'https://smart-market-87p5.onrender.com/produtos';
+      let url = 'http://localhost:8080/produtos';
       let metodo = 'POST';
-      if (produtoEditando) { url = `https://smart-market-87p5.onrender.com/produtos/${produtoEditando}`; metodo = 'PUT'; }
+      if (produtoEditando) { url = `http://localhost:8080/produtos/${produtoEditando}`; metodo = 'PUT'; }
       // ★ LÓGICA DO IMGBB ★
       let linkImagemFinal = null;
       // Verifica se existe um arquivo físico novo para fazer upload
@@ -224,7 +224,7 @@ export default function Admin() {
       const resposta = await fetch(url, { method: metodo, body: formData });
 
       if (resposta.ok) {
-        const novaResposta = await fetch('https://smart-market-87p5.onrender.com/produtos');
+        const novaResposta = await fetch('http://localhost:8080/produtos');
         const novosDados = await novaResposta.json();
         setProdutos(novosDados);
         setModalAberto(false);
@@ -239,7 +239,7 @@ export default function Admin() {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este produto?");
     if (confirmacao) {
       try {
-        const resposta = await fetch(`https://smart-market-87p5.onrender.com/produtos/${id}`, { method: 'DELETE' });
+        const resposta = await fetch(`http://localhost:8080/produtos/${id}`, { method: 'DELETE' });
         if (resposta.ok) setProdutos(produtosAtuais => produtosAtuais.filter(prod => prod.id !== id));
       } catch (erro) { console.error("Erro:", erro); alert("Erro de conexão."); }
     }
@@ -247,7 +247,7 @@ export default function Admin() {
 
   async function handleAtualizarStatusPedido(pedido, novoStatus) {
     try {
-      const resposta = await fetch(`https://smart-market-87p5.onrender.com/pedidos/${pedido.id}/status`, {
+      const resposta = await fetch(`http://localhost:8080/pedidos/${pedido.id}/status`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: novoStatus })
       });
       if (resposta.ok) {
@@ -487,7 +487,7 @@ export default function Admin() {
                         // Mágica para aceitar links da internet ou fotos do sistema antigo
                         const urlDaImagem = prod.imagem && prod.imagem.startsWith('http') 
                          ? prod.imagem 
-                         : (prod.imagem ? `https://smart-market-87p5.onrender.com${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`);
+                         : (prod.imagem ? `http://localhost:8080${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`);
                         
                         return (
                           <tr key={prod.id}>
@@ -546,7 +546,7 @@ export default function Admin() {
                 {loading ? ( <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Carregando pedidos...</div> ) : (
                   <div className="table-wrapper">
                     <table>
-                      <thead><tr><th>Pedido</th><th>Cliente</th><th>Modalidade</th><th>Total</th><th>Status</th><th style={{ textAlign: 'right' }}>Ações</th></tr></thead>
+                      <thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Modalidade</th><th>Total</th><th>Status</th><th style={{ textAlign: 'right' }}>Ações</th></tr></thead>
                       <tbody>
                         {pedidos.map(pedido => {
                           let classeStatus = "status-Pendente";
@@ -557,7 +557,11 @@ export default function Admin() {
                             <tr key={pedido.id}>
                               <td className="td-title" style={{ color: '#4f46e5' }}>#{pedido.id}</td>
                               <td><div className="td-title">{pedido.nomeCliente}</div><div className="td-subtitle">{pedido.telefone}</div></td>
-                              <td className="td-subtitle">{pedido.formaEntrega}</td><td className="preco-normal">R$ {Number(pedido.total).toFixed(2).replace('.', ',')}</td>
+                              <td className="td-subtitle" style={{ textTransform: 'capitalize', fontWeight: '500' }}>
+                                {pedido.data_criacao ? new Date(pedido.data_criacao).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).replace('-feira', '') : '--'}
+                              </td>
+                              <td className="td-subtitle">{pedido.formaEntrega}</td>
+                              <td className="preco-normal">R$ {Number(pedido.total).toFixed(2).replace('.', ',')}</td>
                               <td>
                                 <select className={`select-status ${classeStatus}`} value={pedido.status} onChange={(e) => handleAtualizarStatusPedido(pedido, e.target.value)}>
                                   <option value="Pendente">Pendente</option><option value="Em Preparo">Em Preparo</option><option value="Saiu para Entrega">Saiu para Entrega</option>

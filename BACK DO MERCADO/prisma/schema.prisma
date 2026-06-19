@@ -8,15 +8,16 @@ datasource db {
 }
 
 model pedido {
-  id             Int     @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   nomeCliente    String
   telefone       String?
   total          Float
-  itens          String  @db.Text
-  endereco       String? @db.Text
+  itens          String   @db.Text
+  endereco       String?  @db.Text
   formaEntrega   String?
   formaPagamento String?
-  status         String? @default("Pendente")
+  status         String?  @default("Pendente")
+  data_criacao   DateTime @default(now())
 }
 
 model produto {
@@ -25,10 +26,13 @@ model produto {
   preco          Float
   categoria      String?
   tipo           String?  @default("und")
+  estoque        Float?   @default(100)
   ativo          Int?     @default(1)
   promocao       Boolean? @default(false)
   preco_promocao Decimal? @db.Decimal(10, 2)
   qtd_promocao   Int?     @default(1)
+  imagem         String?  @db.Text
+  variacoes      String?  @db.Text
 }
 
 model usuario {

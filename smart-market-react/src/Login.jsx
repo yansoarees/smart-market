@@ -14,10 +14,11 @@ export default function Login() {
     setCarregando(true);
 
     try {
-      const resposta = await fetch('https://smart-market-87p5.onrender.com/login', {
+      const resposta = await fetch('http://localhost:8080/login', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha })
-      });
+     });
 
       const dados = await resposta.json();
 
