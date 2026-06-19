@@ -12,10 +12,7 @@ const PORT = process.env.PORT || 8080;
  
 // Middlewares
 app.use(cors({
-    origin: [
-        "https://smart-market-beta-ten.vercel.app", 
-        "http://localhost:5173"
-    ],
+    origin: '*',
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
