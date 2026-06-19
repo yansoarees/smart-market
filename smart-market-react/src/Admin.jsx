@@ -32,11 +32,11 @@ export default function Admin() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const resProdutos = await fetch('https://smart-market-production-fbe0.up.railway.app/produtos');
+        const resProdutos = await fetch('[https://smart-market-87p5.onrender.com/produtos](https://smart-market-87p5.onrender.com/produtos)');
         const dadosProdutos = await resProdutos.json();
         setProdutos(dadosProdutos);
 
-        const resPedidos = await fetch('https://smart-market-production-fbe0.up.railway.app/pedidos');
+        const resPedidos = await fetch('[https://smart-market-87p5.onrender.com/pedidos](https://smart-market-87p5.onrender.com/pedidos)');
         const dadosPedidos = await resPedidos.json();
         setPedidos(dadosPedidos);
       } catch (erro) { console.error("Erro ao puxar dados:", erro); } finally { setLoading(false); }
@@ -152,7 +152,7 @@ export default function Admin() {
       const textoOriginal = btn.innerHTML;
       btn.innerHTML = "⏳ Gerando...";
       
-      const resposta = await fetch('https://smart-market-production-fbe0.up.railway.app/relatorio/estoque');
+      const resposta = await fetch('https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app/relatorio/estoque');
       if (!resposta.ok) throw new Error('Erro ao baixar');
       
       const blob = await resposta.blob();
@@ -185,9 +185,9 @@ export default function Admin() {
     const textoOriginal = btnSalvar ? btnSalvar.textContent : "Salvar Produto";
     
     try {
-      let url = 'https://smart-market-production-fbe0.up.railway.app/produtos';
+      let url = 'https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app/produtos';
       let metodo = 'POST';
-      if (produtoEditando) { url = `https://smart-market-production-fbe0.up.railway.app/produtos/${produtoEditando}`; metodo = 'PUT'; }
+      if (produtoEditando) { url = `https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app/produtos/${produtoEditando}`; metodo = 'PUT'; }
 
       // ★ LÓGICA DO IMGBB ★
       let linkImagemFinal = null;
@@ -225,7 +225,7 @@ export default function Admin() {
       const resposta = await fetch(url, { method: metodo, body: formData });
 
       if (resposta.ok) {
-        const novaResposta = await fetch('https://smart-market-production-fbe0.up.railway.app/produtos');
+        const novaResposta = await fetch('https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app/produtos');
         const novosDados = await novaResposta.json();
         setProdutos(novosDados);
         setModalAberto(false);
@@ -240,7 +240,7 @@ export default function Admin() {
     const confirmacao = window.confirm("Tem certeza que deseja excluir este produto?");
     if (confirmacao) {
       try {
-        const resposta = await fetch(`https://smart-market-production-fbe0.up.railway.app/produtos/${id}`, { method: 'DELETE' });
+        const resposta = await fetch(`https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app/produtos/${id}`, { method: 'DELETE' });
         if (resposta.ok) setProdutos(produtosAtuais => produtosAtuais.filter(prod => prod.id !== id));
       } catch (erro) { console.error("Erro:", erro); alert("Erro de conexão."); }
     }
@@ -248,7 +248,7 @@ export default function Admin() {
 
   async function handleAtualizarStatusPedido(pedido, novoStatus) {
     try {
-      const resposta = await fetch(`https://smart-market-production-fbe0.up.railway.app/pedidos/${pedido.id}/status`, {
+      const resposta = await fetch(`https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app/pedidos/${pedido.id}/status`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: novoStatus })
       });
       if (resposta.ok) {
@@ -488,7 +488,7 @@ export default function Admin() {
                         // Mágica para aceitar links da internet ou fotos do sistema antigo
                         const urlDaImagem = prod.imagem && prod.imagem.startsWith('http') 
                           ? prod.imagem 
-                          : (prod.imagem ? `https://smart-market-production-fbe0.up.railway.app${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`);
+                          : (prod.imagem ? `https://smart-market-production-fbe0.up.[https://smart-market-87p5.onrender.com](https://smart-market-87p5.onrender.com).app${prod.imagem}` : `/img/${catFormatada}/${nomeFormatado}.png`);
                         
                         return (
                           <tr key={prod.id}>
