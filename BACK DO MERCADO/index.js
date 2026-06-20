@@ -71,6 +71,7 @@ const upload = multer({ storage: storage });
 // ★ ROTAS DE PRODUTOS (Agora usando o ProdutoRepository) ★
 // ==============================================================
 
+//AJUSTE NA ROTA
 app.get('/relatorio/estoque', async (req, res) => {
   try {
     const produtos = await ProdutoRepository.buscarTodos();
@@ -142,6 +143,7 @@ app.post('/produtos', upload.single('imagem'), async (req, res) => {
     console.log("O que chegou no body:", req.body);
     console.log("Link da imagem final que vai pro banco:", caminhoImagem);
 
+    //MELHORIA NA CONST DE PROMOÇÃO
     const isPromo = (req.body.promocao === 'true' || req.body.promocao === '1');
     
     const id = await ProdutoRepository.criar({
@@ -195,6 +197,7 @@ app.post('/pedidos', async (req, res) => {
       res.status(201).json({ id });
     } catch (err) { res.status(500).json({ error: "Erro ao salvar pedido" }); }
 });
+
 
 app.put('/pedidos/:id/status', async (req, res) => {
   try {
