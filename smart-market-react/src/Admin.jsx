@@ -45,7 +45,9 @@ export default function Admin() {
   }, []);
 
   // ★ INTEGRAÇÃO MÁGICA COM IMGBB ★
-  async function uploadParaImgBB(arquivo) {
+  // Integração com API externa de armazenamento (ImgBB)
+// Recebe o arquivo físico da imagem do produto e retorna a URL pública hospedada na nuvem NAO MEXE NISSO
+  async function uploadParaImgBB(arquivo) {s
     const formData = new FormData();
     formData.append('image', arquivo);
     // SUA CHAVE DA API AQUI
