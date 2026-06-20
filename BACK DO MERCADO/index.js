@@ -142,6 +142,7 @@ app.post('/produtos', upload.single('imagem'), async (req, res) => {
     console.log("O que chegou no body:", req.body);
     console.log("Link da imagem final que vai pro banco:", caminhoImagem);
 
+    //MELHORIA NA CONST DE PROMOÇÃO
     const isPromo = (req.body.promocao === 'true' || req.body.promocao === '1');
     
     const id = await ProdutoRepository.criar({
