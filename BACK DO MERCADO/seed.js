@@ -13,7 +13,10 @@ const produtosOriginais = [
   { nome: "Mistura Láctea Condensada Triangulo 395G", preco: 3.99, categoria: "PROMOÇÃO", tipo: "und" },
   { nome: "Leite Condensado Natville 395G", preco: 5.99, categoria: "PROMOÇÃO", tipo: "und" },
   { nome: "Copo Descartavel CristalCopo", preco: 2.49, categoria: "Embalagens", tipo: "und" },
-  { nome: "Prato Descartavel Raso CristalCopo", preco: 1.49, categoria: "Embalagens", tipo: "und" }
+  { nome: "Prato Descartavel Raso CristalCopo", preco: 1.49, categoria: "Embalagens", tipo: "und" },
+  { nome: "Agua sanitaria dragão 1lt", preco: 2.49, categoria: "Limpeza", tipo: "und" },
+  { nome: "Sabonete even", preco: 1.49, categoria: "Limpeza", tipo: "und" }
+  //add mais mercadoria
 ];
 
 async function popularBanco() {
