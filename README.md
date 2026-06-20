@@ -1,74 +1,51 @@
-#  Smart Market - Sistema de Gestão e Delivery
+# Smart Market - Sistema de Gestão Varejista
 
-Um sistema completo (Full-Stack) desenvolvido para automatizar vendas, gestão de estoque e controle de pedidos de um minimercado/bomboniere. A aplicação conta com uma loja virtual (Catálogo e Carrinho de Compras) para os clientes e um Painel Administrativo (Dashboard) seguro para o lojista.
+O Smart Market é um sistema full-stack desenvolvido para o gerenciamento e automação de um comércio de nicho (bomboniere, mercearia e embalagens). O ecossistema integra uma interface de compras voltada para o consumidor e um painel administrativo robusto para a gestão em tempo real de estoque, vendas e relacionamento com o cliente (CRM).
 
-##  Tecnologias Utilizadas
+Este projeto foi desenvolvido como requisito acadêmico para o curso de Análise e Desenvolvimento de Sistemas da Faculdade Nova Roma.
 
-**Front-end:**
-* React.js (Vite)
-* React Router DOM
-* Recharts (Para os gráficos do Dashboard)
-* CSS puro (Estilo limpo e responsivo)
+## Estrutura do Projeto
 
-**Back-end:**
-* Node.js
-* Express.js
-* Multer (Para upload de imagens)
-* Dotenv (Para segurança de variáveis de ambiente)
+O repositório está dividido em dois módulos principais:
 
-**Banco de Dados:**
-* MySQL
+*   **BACK DO MERCADO:** Diretório contendo a API RESTful, lógicas de negócio e comunicação com o banco de dados.
+*   **smart-market-react:** Diretório contendo a interface de usuário (Front-end), englobando tanto a loja virtual quanto o painel administrativo (Smart Admin).
 
----
+## Tecnologias Utilizadas
 
-##  Como rodar o projeto localmente (Guia de Instalação)
+### Front-end
+*   React.js
+*   Vite
+*   React Router DOM (Roteamento)
+*   Recharts (Visualização de dados do dashboard)
 
-Siga este passo a passo para rodar o projeto na sua máquina.
+### Back-end e Banco de Dados
+*   Node.js com Express
+*   MySQL
+*   Prisma ORM (Modelagem e migrações do banco de dados)
+*   Multer (Processamento de uploads)
 
-### Pré-requisitos
-* Ter o **Node.js** instalado na máquina.
-* Ter o **XAMPP** (ou similar) instalado para rodar o banco de dados MySQL.
+### Integrações
+*   ImgBB API (Hospedagem de imagens em nuvem)
+*   WhatsApp API (Redirecionamento dinâmico para fechamento e acompanhamento de pedidos)
 
-### 1. Preparando o Banco de Dados
-1. Abra o **XAMPP** e inicie os módulos **Apache** e **MySQL**.
-2. Abra o seu gerenciador de banco de dados (ex: phpMyAdmin ou DBeaver).
-3. Crie um banco de dados e importe as tabelas necessárias para o sistema rodar (produtos, pedidos, etc.).
+## Principais Funcionalidades
 
-### 2. Rodando o Servidor (Back-end)
-Abra um terminal e acesse a pasta do Back-end.
+*   **Loja Virtual (B2C):** Catálogo dinâmico com sistema de busca, filtragem por categorias e ocultação automática de produtos sem estoque.
+*   **Precificação Dinâmica (Atacarejo):** Gatilhos promocionais aplicados automaticamente no carrinho com base na quantidade selecionada pelo usuário.
+*   **Gestão de Estoque Detalhada:** Controle de inventário primário e secundário (baseado em variações e sabores de um mesmo produto).
+*   **Dashboard Administrativo:** Acompanhamento de métricas financeiras (ticket médio, faturamento semanal) com geração de gráficos baseados em séries temporais.
+*   **Gestão de Pedidos e CRM:** Acompanhamento do ciclo de vida dos pedidos, com atualização de status e ranqueamento automático de clientes por volume de compras.
 
-\`\`\`bash
-# Instale as dependências do projeto
+## Instruções de Execução
+
+Para rodar o projeto localmente, é necessário ter o Node.js e o MySQL instalados.
+
+### 1. Configuração do Banco de Dados (Back-end)
+Navegue até o diretório do servidor, instale as dependências e sincronize o banco de dados:
+
+```bash
+cd "BACK DO MERCADO"
 npm install
-
-# Crie o arquivo de segurança (Cofre)
-# Crie um arquivo chamado .env na raiz do backend e adicione as suas credenciais:
-# ADMIN_EMAIL=seuemail@smart.com
-# ADMIN_SENHA=suasenha123
-# DB_USER=root
-# DB_PASS=suasenhadobanco
-
-# Inicie o servidor Node.js
-npm start
-\`\`\`
-> O Back-end estará rodando na porta **3001** (http://localhost:3001)
-
-### 3. Rodando a Loja (Front-end)
-Abra **outro terminal** e acesse a pasta do Front-end.
-
-\`\`\`bash
-# Instale as dependências
-npm install
-
-# Inicie a aplicação React
-npm run dev
-\`\`\`
-> O Front-end estará rodando, geralmente, na porta **5173** (http://localhost:5173). É só clicar no link que aparecer no terminal!
-
----
-
-##  Segurança do Painel Administrativo
-O painel administrativo (`/admin`) é protegido. Para testar o sistema localmente, utilize as credenciais que você configurou no seu arquivo `.env`.
-
----
-*Desenvolvido com 💻 por Yan Gabriel.*
+npx prisma db push
+node index.js
