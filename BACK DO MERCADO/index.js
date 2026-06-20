@@ -78,7 +78,7 @@ app.get('/relatorio/estoque', async (req, res) => {
     const workbook = new excelJS.Workbook();
     const worksheet = workbook.addWorksheet('Estoque Smart Market');
 
-    // Cabeçalhos da Tabela
+    // nome do cabeçalho da Tabela
     worksheet.columns = [
       { header: 'ID', key: 'id', width: 8 },
       { header: 'Produto', key: 'nome', width: 35 },
